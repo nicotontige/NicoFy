@@ -69,10 +69,6 @@ final externalRecommendations = ValueNotifier<bool>(
   Hive.box('settings').get('externalRecommendations', defaultValue: false),
 );
 
-final smartShuffleEnabled = ValueNotifier<bool>(
-  Hive.box('settings').get('smartShuffleEnabled', defaultValue: false),
-);
-
 final useProxy = ValueNotifier<bool>(
   Hive.box('settings').get('useProxy', defaultValue: false),
 );
@@ -183,10 +179,6 @@ void reloadSettingsFromStorage() {
   );
   externalRecommendations.value = settings.get(
     'externalRecommendations',
-    defaultValue: false,
-  );
-  smartShuffleEnabled.value = settings.get(
-    'smartShuffleEnabled',
     defaultValue: false,
   );
   useProxy.value = settings.get('useProxy', defaultValue: false);
