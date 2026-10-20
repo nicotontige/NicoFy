@@ -37,6 +37,7 @@ import 'package:musify/widgets/listening_recap_card.dart';
 import 'package:musify/widgets/mini_player_bottom_space.dart';
 import 'package:musify/widgets/playlist_cube.dart';
 import 'package:musify/widgets/recommended_songs_section.dart';
+import 'package:musify/widgets/remote_focusable.dart';
 import 'package:musify/widgets/section_header.dart';
 
 class HomePage extends StatefulWidget {
@@ -185,9 +186,13 @@ class _HomePageState extends State<HomePage> {
         final playlist = playlists[index];
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8),
-          child: GestureDetector(
-            onTap: () => context.push('/home/playlist/${playlist['ytid']}'),
-            child: PlaylistCube(playlist, size: height),
+          child: RemoteFocusable(
+            onActivate: () =>
+                context.push('/home/playlist/${playlist['ytid']}'),
+            child: GestureDetector(
+              onTap: () => context.push('/home/playlist/${playlist['ytid']}'),
+              child: PlaylistCube(playlist, size: height),
+            ),
           ),
         );
       },
