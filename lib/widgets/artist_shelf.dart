@@ -22,6 +22,7 @@
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:musify/widgets/playlist_cube.dart';
+import 'package:musify/widgets/remote_focusable.dart';
 import 'package:musify/widgets/section_header.dart';
 
 /// A titled row of artwork on the artist page: its releases, or the artists
@@ -102,43 +103,46 @@ class ArtistShelf extends StatelessWidget {
 
     return SizedBox(
       width: cubeSize,
-      child: GestureDetector(
-        onTap: () => onTap(item),
-        child: Column(
-          crossAxisAlignment: circular
-              ? CrossAxisAlignment.center
-              : CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (circular) ClipOval(child: artwork) else artwork,
-            const SizedBox(height: _artworkGap),
-            Text(
-              item['title']?.toString() ?? '',
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              textAlign: circular ? TextAlign.center : TextAlign.start,
-              style: TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: _titleFontSize,
-                height: _lineHeight,
-                color: colorScheme.onSurface,
-              ),
-            ),
-            if (subtitle != null && subtitle.isNotEmpty) ...[
-              const SizedBox(height: _labelGap),
+      child: RemoteFocusable(
+        onActivate: () => onTap(item),
+        child: GestureDetector(
+          onTap: () => onTap(item),
+          child: Column(
+            crossAxisAlignment: circular
+                ? CrossAxisAlignment.center
+                : CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (circular) ClipOval(child: artwork) else artwork,
+              const SizedBox(height: _artworkGap),
               Text(
-                subtitle,
-                maxLines: 1,
+                item['title']?.toString() ?? '',
+                maxLines: 2,
                 overflow: TextOverflow.ellipsis,
+                textAlign: circular ? TextAlign.center : TextAlign.start,
                 style: TextStyle(
-                  fontWeight: FontWeight.w500,
-                  fontSize: _subtitleFontSize,
+                  fontWeight: FontWeight.w600,
+                  fontSize: _titleFontSize,
                   height: _lineHeight,
-                  color: colorScheme.onSurfaceVariant,
+                  color: colorScheme.onSurface,
                 ),
               ),
+              if (subtitle != null && subtitle.isNotEmpty) ...[
+                const SizedBox(height: _labelGap),
+                Text(
+                  subtitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w500,
+                    fontSize: _subtitleFontSize,
+                    height: _lineHeight,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );

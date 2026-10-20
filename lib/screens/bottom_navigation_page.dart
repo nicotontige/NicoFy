@@ -51,6 +51,14 @@ class _BottomNavigationPageState extends State<BottomNavigationPage> {
   /// Track the previously selected shell branch to detect reselects.
   int? _previousShellIndex;
 
+  final _railFocusNode = FocusNode(skipTraversal: true);
+
+  @override
+  void dispose() {
+    _railFocusNode.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return PopScope(
@@ -80,60 +88,74 @@ class _BottomNavigationPageState extends State<BottomNavigationPage> {
             builder: (context, constraints) {
               final isLargeScreen = MediaQuery.of(context).size.width >= 600;
               final items = _getNavigationItems(isOfflineMode);
+              final selectedIndex = _getCurrentIndex(items, isOfflineMode);
 
               return Scaffold(
                 body: SafeArea(
                   child: Row(
                     children: [
                       if (isLargeScreen)
-                        NavigationRail(
-                          labelType: NavigationRailLabelType.selected,
-                          destinations: items
-                              .map(
-                                (item) => NavigationRailDestination(
-                                  icon: Icon(item.icon),
-                                  selectedIcon: Icon(item.selectedIcon),
-                                  label: Text(item.label),
-                                ),
-                              )
-                              .toList(),
-                          selectedIndex: _getCurrentIndex(items, isOfflineMode),
-                          onDestinationSelected: (index) =>
-                              _onTabTapped(index, items),
+                        Focus(
+                          focusNode: _railFocusNode,
+                          child: NavigationRail(
+                            labelType: NavigationRailLabelType.selected,
+                            destinations: items
+                                .map(
+                                  (item) => NavigationRailDestination(
+                                    icon: Icon(item.icon),
+                                    selectedIcon: Icon(item.selectedIcon),
+                                    label: Text(item.label),
+                                  ),
+                                )
+                                .toList(),
+                            selectedIndex: selectedIndex,
+                            onDestinationSelected: (index) =>
+                                _onTabTapped(index, items),
+                          ),
                         ),
                       Expanded(
-                        child: StreamBuilder<bool>(
-                          initialData: audioHandler.mediaItem.value != null,
-                          stream: _miniPlayerVisibilityStream,
-                          builder: (context, snapshot) {
-                            final mediaQuery = MediaQuery.of(context);
-                            final isMiniPlayerVisible = snapshot.data ?? false;
-                            final bottomPadding = !isMiniPlayerVisible
-                                ? mediaQuery.padding.bottom
-                                : mediaQuery.padding.bottom +
-                                      miniPlayerTotalHeight;
-
-                            return Stack(
-                              alignment: Alignment.bottomCenter,
-                              children: [
-                                MediaQuery(
-                                  data: mediaQuery.copyWith(
-                                    padding: mediaQuery.padding.copyWith(
-                                      bottom: bottomPadding,
-                                    ),
-                                  ),
-                                  child: widget.child,
+                        child: Actions(
+                          actions: {
+                            DirectionalFocusIntent:
+                                CallbackAction<DirectionalFocusIntent>(
+                                  onInvoke: (intent) =>
+                                      _moveFocus(intent, selectedIndex),
                                 ),
-                                const Padding(
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 8,
-                                  ),
-                                  child: MiniPlayer(),
-                                ),
-                              ],
-                            );
                           },
+                          child: StreamBuilder<bool>(
+                            initialData: audioHandler.mediaItem.value != null,
+                            stream: _miniPlayerVisibilityStream,
+                            builder: (context, snapshot) {
+                              final mediaQuery = MediaQuery.of(context);
+                              final isMiniPlayerVisible =
+                                  snapshot.data ?? false;
+                              final bottomPadding = !isMiniPlayerVisible
+                                  ? mediaQuery.padding.bottom
+                                  : mediaQuery.padding.bottom +
+                                        miniPlayerTotalHeight;
+
+                              return Stack(
+                                alignment: Alignment.bottomCenter,
+                                children: [
+                                  MediaQuery(
+                                    data: mediaQuery.copyWith(
+                                      padding: mediaQuery.padding.copyWith(
+                                        bottom: bottomPadding,
+                                      ),
+                                    ),
+                                    child: widget.child,
+                                  ),
+                                  const Padding(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 8,
+                                    ),
+                                    child: MiniPlayer(),
+                                  ),
+                                ],
+                              );
+                            },
+                          ),
                         ),
                       ),
                     ],
@@ -141,7 +163,7 @@ class _BottomNavigationPageState extends State<BottomNavigationPage> {
                 ),
                 bottomNavigationBar: !isLargeScreen
                     ? NavigationBar(
-                        selectedIndex: _getCurrentIndex(items, isOfflineMode),
+                        selectedIndex: selectedIndex,
                         labelBehavior: languageSetting == const Locale('en', '')
                             ? NavigationDestinationLabelBehavior
                                   .onlyShowSelected
@@ -205,6 +227,17 @@ class _BottomNavigationPageState extends State<BottomNavigationPage> {
     ]);
 
     return items;
+  }
+
+  /// A TV remote has no other way to reach the rail: when nothing in the page
+  /// lies further left, the left key lands on the selected tab.
+  void _moveFocus(DirectionalFocusIntent intent, int selectedIndex) {
+    final moved = primaryFocus?.focusInDirection(intent.direction) ?? false;
+    if (moved || intent.direction != TraversalDirection.left) return;
+
+    final tabs = _railFocusNode.traversalDescendants.toList();
+    if (tabs.isEmpty) return;
+    tabs[selectedIndex.clamp(0, tabs.length - 1)].requestFocus();
   }
 
   void _handleOfflineModeChange(bool isOfflineMode) {
