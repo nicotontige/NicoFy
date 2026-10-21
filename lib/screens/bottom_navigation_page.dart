@@ -52,10 +52,12 @@ class _BottomNavigationPageState extends State<BottomNavigationPage> {
   int? _previousShellIndex;
 
   final _railFocusNode = FocusNode(skipTraversal: true);
+  final _miniPlayerFocusNode = FocusNode(skipTraversal: true);
 
   @override
   void dispose() {
     _railFocusNode.dispose();
+    _miniPlayerFocusNode.dispose();
     super.dispose();
   }
 
@@ -92,36 +94,36 @@ class _BottomNavigationPageState extends State<BottomNavigationPage> {
 
               return Scaffold(
                 body: SafeArea(
-                  child: Row(
-                    children: [
-                      if (isLargeScreen)
-                        Focus(
-                          focusNode: _railFocusNode,
-                          child: NavigationRail(
-                            labelType: NavigationRailLabelType.selected,
-                            destinations: items
-                                .map(
-                                  (item) => NavigationRailDestination(
-                                    icon: Icon(item.icon),
-                                    selectedIcon: Icon(item.selectedIcon),
-                                    label: Text(item.label),
-                                  ),
-                                )
-                                .toList(),
-                            selectedIndex: selectedIndex,
-                            onDestinationSelected: (index) =>
-                                _onTabTapped(index, items),
+                  child: Actions(
+                    actions: {
+                      DirectionalFocusIntent:
+                          CallbackAction<DirectionalFocusIntent>(
+                            onInvoke: (intent) =>
+                                _moveFocus(intent, selectedIndex),
                           ),
-                        ),
-                      Expanded(
-                        child: Actions(
-                          actions: {
-                            DirectionalFocusIntent:
-                                CallbackAction<DirectionalFocusIntent>(
-                                  onInvoke: (intent) =>
-                                      _moveFocus(intent, selectedIndex),
-                                ),
-                          },
+                    },
+                    child: Row(
+                      children: [
+                        if (isLargeScreen)
+                          Focus(
+                            focusNode: _railFocusNode,
+                            child: NavigationRail(
+                              labelType: NavigationRailLabelType.selected,
+                              destinations: items
+                                  .map(
+                                    (item) => NavigationRailDestination(
+                                      icon: Icon(item.icon),
+                                      selectedIcon: Icon(item.selectedIcon),
+                                      label: Text(item.label),
+                                    ),
+                                  )
+                                  .toList(),
+                              selectedIndex: selectedIndex,
+                              onDestinationSelected: (index) =>
+                                  _onTabTapped(index, items),
+                            ),
+                          ),
+                        Expanded(
                           child: StreamBuilder<bool>(
                             initialData: audioHandler.mediaItem.value != null,
                             stream: _miniPlayerVisibilityStream,
@@ -145,20 +147,24 @@ class _BottomNavigationPageState extends State<BottomNavigationPage> {
                                     ),
                                     child: widget.child,
                                   ),
-                                  const Padding(
-                                    padding: EdgeInsets.symmetric(
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(
                                       horizontal: 8,
                                       vertical: 8,
                                     ),
-                                    child: MiniPlayer(),
+                                    child: Focus(
+                                      focusNode: _miniPlayerFocusNode,
+                                      skipTraversal: true,
+                                      child: const MiniPlayer(),
+                                    ),
                                   ),
                                 ],
                               );
                             },
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
                 bottomNavigationBar: !isLargeScreen
@@ -229,14 +235,30 @@ class _BottomNavigationPageState extends State<BottomNavigationPage> {
     return items;
   }
 
-  /// A TV remote has no other way to reach the rail: when nothing in the page
-  /// lies further left, the left key lands on the selected tab.
+  /// Shortcuts for a TV remote, which otherwise has to walk the whole page to
+  /// reach the rail or the mini player: down from the last tab lands on the
+  /// mini player, and left from the page lands on the selected tab when
+  /// nothing lies further left.
   void _moveFocus(DirectionalFocusIntent intent, int selectedIndex) {
-    final moved = primaryFocus?.focusInDirection(intent.direction) ?? false;
-    if (moved || intent.direction != TraversalDirection.left) return;
-
     final tabs = _railFocusNode.traversalDescendants.toList();
-    if (tabs.isEmpty) return;
+    final miniPlayer = _miniPlayerFocusNode.traversalDescendants.firstOrNull;
+    if (intent.direction == TraversalDirection.down &&
+        miniPlayer != null &&
+        tabs.isNotEmpty &&
+        primaryFocus == tabs.last) {
+      miniPlayer.requestFocus();
+      return;
+    }
+
+    final moved = primaryFocus?.focusInDirection(intent.direction) ?? false;
+    if (moved ||
+        intent.direction != TraversalDirection.left ||
+        tabs.isEmpty ||
+        _railFocusNode.hasFocus ||
+        // Inside an open bottom sheet: stay there.
+        primaryFocus?.nearestScope != _railFocusNode.nearestScope) {
+      return;
+    }
     tabs[selectedIndex.clamp(0, tabs.length - 1)].requestFocus();
   }
 
