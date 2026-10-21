@@ -29,8 +29,9 @@ import 'package:musify/extensions/l10n.dart';
 import 'package:musify/main.dart';
 import 'package:musify/services/settings_manager.dart';
 import 'package:musify/utilities/flutter_bottom_sheet.dart'
-    show closeCurrentBottomSheet;
+    show closeCurrentBottomSheet, showCustomBottomSheet;
 import 'package:musify/widgets/mini_player.dart';
+import 'package:musify/widgets/queue_list_view.dart';
 
 class BottomNavigationPage extends StatefulWidget {
   const BottomNavigationPage({required this.child, super.key});
@@ -52,12 +53,10 @@ class _BottomNavigationPageState extends State<BottomNavigationPage> {
   int? _previousShellIndex;
 
   final _railFocusNode = FocusNode(skipTraversal: true);
-  final _miniPlayerFocusNode = FocusNode(skipTraversal: true);
 
   @override
   void dispose() {
     _railFocusNode.dispose();
-    _miniPlayerFocusNode.dispose();
     super.dispose();
   }
 
@@ -121,6 +120,7 @@ class _BottomNavigationPageState extends State<BottomNavigationPage> {
                               selectedIndex: selectedIndex,
                               onDestinationSelected: (index) =>
                                   _onTabTapped(index, items),
+                              trailing: _buildQueueRailButton(),
                             ),
                           ),
                         Expanded(
@@ -147,16 +147,12 @@ class _BottomNavigationPageState extends State<BottomNavigationPage> {
                                     ),
                                     child: widget.child,
                                   ),
-                                  Padding(
-                                    padding: const EdgeInsets.symmetric(
+                                  const Padding(
+                                    padding: EdgeInsets.symmetric(
                                       horizontal: 8,
                                       vertical: 8,
                                     ),
-                                    child: Focus(
-                                      focusNode: _miniPlayerFocusNode,
-                                      skipTraversal: true,
-                                      child: const MiniPlayer(),
-                                    ),
+                                    child: MiniPlayer(),
                                   ),
                                 ],
                               );
@@ -192,6 +188,36 @@ class _BottomNavigationPageState extends State<BottomNavigationPage> {
           );
         },
       ),
+    );
+  }
+
+  /// On a TV the mini player sits at the far end of every page, and the queue
+  /// one more screen behind it; this puts the queue one step below the tabs.
+  Widget _buildQueueRailButton() {
+    return StreamBuilder<bool>(
+      initialData: audioHandler.mediaItem.value != null,
+      stream: _miniPlayerVisibilityStream,
+      builder: (context, snapshot) {
+        if (!(snapshot.data ?? false)) return const SizedBox.shrink();
+
+        final label = context.l10n?.queue ?? 'Queue';
+        return Padding(
+          padding: const EdgeInsets.only(top: 12),
+          child: Column(
+            children: [
+              IconButton(
+                icon: const Icon(FluentIcons.apps_list_24_regular),
+                tooltip: label,
+                onPressed: () => showCustomBottomSheet(
+                  context,
+                  const QueueWidget(isBottomSheet: true),
+                ),
+              ),
+              Text(label, style: Theme.of(context).textTheme.labelMedium),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -235,21 +261,10 @@ class _BottomNavigationPageState extends State<BottomNavigationPage> {
     return items;
   }
 
-  /// Shortcuts for a TV remote, which otherwise has to walk the whole page to
-  /// reach the rail or the mini player: down from the last tab lands on the
-  /// mini player, and left from the page lands on the selected tab when
-  /// nothing lies further left.
+  /// A TV remote has no other way to reach the rail: when nothing in the page
+  /// lies further left, the left key lands on the selected tab.
   void _moveFocus(DirectionalFocusIntent intent, int selectedIndex) {
     final tabs = _railFocusNode.traversalDescendants.toList();
-    final miniPlayer = _miniPlayerFocusNode.traversalDescendants.firstOrNull;
-    if (intent.direction == TraversalDirection.down &&
-        miniPlayer != null &&
-        tabs.isNotEmpty &&
-        primaryFocus == tabs.last) {
-      miniPlayer.requestFocus();
-      return;
-    }
-
     final moved = primaryFocus?.focusInDirection(intent.direction) ?? false;
     if (moved ||
         intent.direction != TraversalDirection.left ||
