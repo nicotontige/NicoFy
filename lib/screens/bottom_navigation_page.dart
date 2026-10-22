@@ -281,7 +281,10 @@ class _BottomNavigationPageState extends State<BottomNavigationPage> {
         builder: (_) => const Scaffold(
           body: SafeArea(
             // Keeps the arrow keys on the queue; back leaves the page.
-            child: FocusScope(autofocus: true, child: QueueWidget()),
+            child: FocusScope(
+              autofocus: true,
+              child: QueueWidget(focusCurrentSong: true),
+            ),
           ),
         ),
       ),
