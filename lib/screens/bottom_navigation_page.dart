@@ -29,7 +29,7 @@ import 'package:musify/extensions/l10n.dart';
 import 'package:musify/main.dart';
 import 'package:musify/services/settings_manager.dart';
 import 'package:musify/utilities/flutter_bottom_sheet.dart'
-    show closeCurrentBottomSheet, isBottomSheetOpen, showCustomBottomSheet;
+    show closeCurrentBottomSheet, isBottomSheetOpen;
 import 'package:musify/widgets/mini_player.dart';
 import 'package:musify/widgets/queue_list_view.dart';
 
@@ -114,25 +114,22 @@ class _BottomNavigationPageState extends State<BottomNavigationPage> {
                         if (isLargeScreen)
                           Focus(
                             focusNode: _railFocusNode,
-                            // Below the Scaffold, so the queue sheet can open.
-                            child: Builder(
-                              builder: (railContext) => NavigationRail(
-                                labelType: NavigationRailLabelType.selected,
-                                destinations: items
-                                    .map(
-                                      (item) => NavigationRailDestination(
-                                        icon: Icon(item.icon),
-                                        selectedIcon: Icon(item.selectedIcon),
-                                        label: Text(item.label),
-                                      ),
-                                    )
-                                    .toList(),
-                                selectedIndex: selectedIndex,
-                                onDestinationSelected: (index) =>
-                                    items[index].shellIndex == _queueShellIndex
-                                    ? _showQueue(railContext)
-                                    : _onTabTapped(index, items),
-                              ),
+                            child: NavigationRail(
+                              labelType: NavigationRailLabelType.selected,
+                              destinations: items
+                                  .map(
+                                    (item) => NavigationRailDestination(
+                                      icon: Icon(item.icon),
+                                      selectedIcon: Icon(item.selectedIcon),
+                                      label: Text(item.label),
+                                    ),
+                                  )
+                                  .toList(),
+                              selectedIndex: selectedIndex,
+                              onDestinationSelected: (index) =>
+                                  items[index].shellIndex == _queueShellIndex
+                                  ? _showQueue()
+                                  : _onTabTapped(index, items),
                             ),
                           ),
                         Expanded(
@@ -275,9 +272,20 @@ class _BottomNavigationPageState extends State<BottomNavigationPage> {
     tabs[selectedIndex.clamp(0, tabs.length - 1)].requestFocus();
   }
 
-  void _showQueue(BuildContext context) {
+  /// A full page rather than a bottom sheet: a sheet sits beside the page, so
+  /// a remote can wander out of it and not find its way back.
+  void _showQueue() {
     closeCurrentBottomSheet();
-    showCustomBottomSheet(context, const QueueWidget(isBottomSheet: true));
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => const Scaffold(
+          body: SafeArea(
+            // Keeps the arrow keys on the queue; back leaves the page.
+            child: FocusScope(autofocus: true, child: QueueWidget()),
+          ),
+        ),
+      ),
+    );
   }
 
   void _handleOfflineModeChange(bool isOfflineMode) {

@@ -126,13 +126,19 @@ class _MiniPlayerBodyState extends State<_MiniPlayerBody>
     _scaleAnimation = Tween<double>(begin: 1, end: 0.98).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
     );
+    FocusManager.instance.addHighlightModeListener(_onHighlightModeChanged);
   }
 
   @override
   void dispose() {
+    FocusManager.instance.removeHighlightModeListener(_onHighlightModeChanged);
     _animationController.dispose();
     super.dispose();
   }
+
+  // A TV remote cannot reach the controls, so with one in hand the bar only
+  // shows what is playing.
+  void _onHighlightModeChanged(FocusHighlightMode mode) => setState(() {});
 
   static const double _dragThresholdForNavigation = 10;
 
@@ -237,12 +243,14 @@ class _MiniPlayerBodyState extends State<_MiniPlayerBody>
                             ),
                           ),
                         ),
-                        _ControlsWidget(
-                          colorScheme: colorScheme,
-                          playbackState: state.playbackState,
-                          hasNext: widget.hasNext,
-                          progress: progress,
-                        ),
+                        if (FocusManager.instance.highlightMode ==
+                            FocusHighlightMode.touch)
+                          _ControlsWidget(
+                            colorScheme: colorScheme,
+                            playbackState: state.playbackState,
+                            hasNext: widget.hasNext,
+                            progress: progress,
+                          ),
                       ],
                     ),
                   ),
