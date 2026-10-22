@@ -24,7 +24,6 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:musify/constants/app_constants.dart';
 import 'package:musify/extensions/l10n.dart';
 import 'package:musify/main.dart';
 import 'package:musify/services/settings_manager.dart';
@@ -144,32 +143,23 @@ class _BottomNavigationPageState extends State<BottomNavigationPage> {
                             initialData: audioHandler.mediaItem.value != null,
                             stream: _miniPlayerVisibilityStream,
                             builder: (context, snapshot) {
-                              final mediaQuery = MediaQuery.of(context);
                               final isMiniPlayerVisible =
                                   snapshot.data ?? false;
-                              final bottomPadding = !isMiniPlayerVisible
-                                  ? mediaQuery.padding.bottom
-                                  : mediaQuery.padding.bottom +
-                                        miniPlayerTotalHeight;
 
-                              return Stack(
-                                alignment: Alignment.bottomCenter,
+                              // Below the page rather than floating over it:
+                              // a TV remote scrolls just far enough to show
+                              // the focused row, which then sat under the bar.
+                              return Column(
                                 children: [
-                                  MediaQuery(
-                                    data: mediaQuery.copyWith(
-                                      padding: mediaQuery.padding.copyWith(
-                                        bottom: bottomPadding,
+                                  Expanded(child: widget.child),
+                                  if (isMiniPlayerVisible)
+                                    const Padding(
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 8,
                                       ),
+                                      child: MiniPlayer(),
                                     ),
-                                    child: widget.child,
-                                  ),
-                                  const Padding(
-                                    padding: EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 8,
-                                    ),
-                                    child: MiniPlayer(),
-                                  ),
                                 ],
                               );
                             },
