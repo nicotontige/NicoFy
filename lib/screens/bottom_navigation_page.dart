@@ -65,18 +65,25 @@ class _BottomNavigationPageState extends State<BottomNavigationPage> {
 
   @override
   Widget build(BuildContext context) {
-    return PopScope(
-      canPop: widget.child.currentIndex == 0,
-      onPopInvokedWithResult: (didPop, _) {
-        if (didPop) return;
+    // An open sheet must keep back for itself, even on the home tab, where
+    // back would otherwise leave the app.
+    return ValueListenableBuilder<bool>(
+      valueListenable: isBottomSheetOpen,
+      builder: (context, isSheetOpen, child) => PopScope(
+        canPop: widget.child.currentIndex == 0 && !isSheetOpen,
+        onPopInvokedWithResult: (didPop, _) {
+          if (didPop) return;
+          if (isSheetOpen) return closeCurrentBottomSheet();
 
-        final currentIndex = widget.child.currentIndex;
-        if (currentIndex != 0) {
-          widget.child.goBranch(0);
-        } else {
-          SystemNavigator.pop();
-        }
-      },
+          final currentIndex = widget.child.currentIndex;
+          if (currentIndex != 0) {
+            widget.child.goBranch(0);
+          } else {
+            SystemNavigator.pop();
+          }
+        },
+        child: child!,
+      ),
       child: ValueListenableBuilder<bool>(
         valueListenable: offlineMode,
         builder: (context, isOfflineMode, _) {
@@ -266,7 +273,7 @@ class _BottomNavigationPageState extends State<BottomNavigationPage> {
         tabs.isEmpty ||
         _railFocusNode.hasFocus ||
         // Inside an open bottom sheet: stay there.
-        isBottomSheetOpen) {
+        isBottomSheetOpen.value) {
       return;
     }
     tabs[selectedIndex.clamp(0, tabs.length - 1)].requestFocus();
