@@ -54,6 +54,9 @@ class _BottomNavigationPageState extends State<BottomNavigationPage> {
 
   final _railFocusNode = FocusNode(skipTraversal: true);
 
+  /// Not a branch: the rail entry that opens the queue.
+  static const _queueShellIndex = -1;
+
   @override
   void dispose() {
     _railFocusNode.dispose();
@@ -85,10 +88,15 @@ class _BottomNavigationPageState extends State<BottomNavigationPage> {
           }
           _previousOfflineMode = isOfflineMode;
 
-          return LayoutBuilder(
-            builder: (context, constraints) {
+          return StreamBuilder<bool>(
+            initialData: audioHandler.mediaItem.value != null,
+            stream: _miniPlayerVisibilityStream,
+            builder: (context, playingSnapshot) {
               final isLargeScreen = MediaQuery.of(context).size.width >= 600;
-              final items = _getNavigationItems(isOfflineMode);
+              final items = _getNavigationItems(
+                isOfflineMode,
+                showQueue: isLargeScreen && (playingSnapshot.data ?? false),
+              );
               final selectedIndex = _getCurrentIndex(items, isOfflineMode);
 
               return Scaffold(
@@ -106,21 +114,25 @@ class _BottomNavigationPageState extends State<BottomNavigationPage> {
                         if (isLargeScreen)
                           Focus(
                             focusNode: _railFocusNode,
-                            child: NavigationRail(
-                              labelType: NavigationRailLabelType.selected,
-                              destinations: items
-                                  .map(
-                                    (item) => NavigationRailDestination(
-                                      icon: Icon(item.icon),
-                                      selectedIcon: Icon(item.selectedIcon),
-                                      label: Text(item.label),
-                                    ),
-                                  )
-                                  .toList(),
-                              selectedIndex: selectedIndex,
-                              onDestinationSelected: (index) =>
-                                  _onTabTapped(index, items),
-                              trailing: _buildQueueRailButton(),
+                            // Below the Scaffold, so the queue sheet can open.
+                            child: Builder(
+                              builder: (railContext) => NavigationRail(
+                                labelType: NavigationRailLabelType.selected,
+                                destinations: items
+                                    .map(
+                                      (item) => NavigationRailDestination(
+                                        icon: Icon(item.icon),
+                                        selectedIcon: Icon(item.selectedIcon),
+                                        label: Text(item.label),
+                                      ),
+                                    )
+                                    .toList(),
+                                selectedIndex: selectedIndex,
+                                onDestinationSelected: (index) =>
+                                    items[index].shellIndex == _queueShellIndex
+                                    ? _showQueue(railContext)
+                                    : _onTabTapped(index, items),
+                              ),
                             ),
                           ),
                         Expanded(
@@ -191,37 +203,10 @@ class _BottomNavigationPageState extends State<BottomNavigationPage> {
     );
   }
 
-  /// On a TV the mini player sits at the far end of every page, and the queue
-  /// one more screen behind it; this puts the queue one step below the tabs.
-  Widget _buildQueueRailButton() {
-    return StreamBuilder<bool>(
-      initialData: audioHandler.mediaItem.value != null,
-      stream: _miniPlayerVisibilityStream,
-      builder: (context, snapshot) {
-        if (!(snapshot.data ?? false)) return const SizedBox.shrink();
-
-        final label = context.l10n?.queue ?? 'Queue';
-        return Padding(
-          padding: const EdgeInsets.only(top: 12),
-          child: Column(
-            children: [
-              IconButton(
-                icon: const Icon(FluentIcons.apps_list_24_regular),
-                tooltip: label,
-                onPressed: () => showCustomBottomSheet(
-                  context,
-                  const QueueWidget(isBottomSheet: true),
-                ),
-              ),
-              Text(label, style: Theme.of(context).textTheme.labelMedium),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  List<_NavigationItem> _getNavigationItems(bool isOfflineMode) {
+  List<_NavigationItem> _getNavigationItems(
+    bool isOfflineMode, {
+    bool showQueue = false,
+  }) {
     final items = <_NavigationItem>[
       _NavigationItem(
         icon: FluentIcons.home_24_regular,
@@ -230,6 +215,19 @@ class _BottomNavigationPageState extends State<BottomNavigationPage> {
         shellIndex: 0,
       ),
     ];
+
+    // On a TV the mini player sits at the far end of every page and the queue
+    // one more screen behind it, so the rail gets a way straight to the queue.
+    if (showQueue) {
+      items.add(
+        _NavigationItem(
+          icon: FluentIcons.play_24_regular,
+          selectedIcon: FluentIcons.play_24_filled,
+          label: context.l10n?.queue ?? 'Queue',
+          shellIndex: _queueShellIndex,
+        ),
+      );
+    }
 
     // Only add search tab in online mode
     if (!isOfflineMode) {
@@ -275,6 +273,11 @@ class _BottomNavigationPageState extends State<BottomNavigationPage> {
       return;
     }
     tabs[selectedIndex.clamp(0, tabs.length - 1)].requestFocus();
+  }
+
+  void _showQueue(BuildContext context) {
+    closeCurrentBottomSheet();
+    showCustomBottomSheet(context, const QueueWidget(isBottomSheet: true));
   }
 
   void _handleOfflineModeChange(bool isOfflineMode) {
