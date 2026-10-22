@@ -29,7 +29,7 @@ import 'package:musify/extensions/l10n.dart';
 import 'package:musify/main.dart';
 import 'package:musify/services/settings_manager.dart';
 import 'package:musify/utilities/flutter_bottom_sheet.dart'
-    show closeCurrentBottomSheet, showCustomBottomSheet;
+    show closeCurrentBottomSheet, isBottomSheetOpen, showCustomBottomSheet;
 import 'package:musify/widgets/mini_player.dart';
 import 'package:musify/widgets/queue_list_view.dart';
 
@@ -269,7 +269,7 @@ class _BottomNavigationPageState extends State<BottomNavigationPage> {
         tabs.isEmpty ||
         _railFocusNode.hasFocus ||
         // Inside an open bottom sheet: stay there.
-        primaryFocus?.nearestScope != _railFocusNode.nearestScope) {
+        isBottomSheetOpen) {
       return;
     }
     tabs[selectedIndex.clamp(0, tabs.length - 1)].requestFocus();

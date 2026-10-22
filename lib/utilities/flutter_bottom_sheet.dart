@@ -86,6 +86,8 @@ PersistentBottomSheetController? showCustomBottomSheet(
   return controller;
 }
 
+bool get isBottomSheetOpen => _currentBottomSheetController != null;
+
 void closeCurrentBottomSheet() {
   try {
     _currentBottomSheetController?.close();
