@@ -77,27 +77,31 @@ PersistentBottomSheetController? showCustomBottomSheet(
   );
 
   _currentBottomSheetController = controller;
+  isBottomSheetOpen.value = true;
   controller.closed.whenComplete(() {
     if (_currentBottomSheetController == controller) {
       _currentBottomSheetController = null;
+      isBottomSheetOpen.value = false;
     }
   });
 
   return controller;
 }
 
-bool get isBottomSheetOpen => _currentBottomSheetController != null;
+final isBottomSheetOpen = ValueNotifier<bool>(false);
 
 void closeCurrentBottomSheet() {
   try {
     _currentBottomSheetController?.close();
   } catch (_) {}
   _currentBottomSheetController = null;
+  isBottomSheetOpen.value = false;
 }
 
 /// The sheet is not a route, so opening it leaves focus on the page behind,
-/// out of reach of a TV remote. Move focus onto its first item and keep the
-/// arrow keys inside it until it closes.
+/// out of reach of a TV remote, and back pops that page instead of closing
+/// it. Move focus onto its first item, keep the arrow keys inside it until it
+/// closes, and let back close it.
 class _SheetFocus extends StatefulWidget {
   const _SheetFocus({required this.child});
 
@@ -126,6 +130,12 @@ class _SheetFocusState extends State<_SheetFocus> {
 
   @override
   Widget build(BuildContext context) {
-    return FocusScope(node: _scopeNode, child: widget.child);
+    return BackButtonListener(
+      onBackButtonPressed: () async {
+        closeCurrentBottomSheet();
+        return true;
+      },
+      child: FocusScope(node: _scopeNode, child: widget.child),
+    );
   }
 }
