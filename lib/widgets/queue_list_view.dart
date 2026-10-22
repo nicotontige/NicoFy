@@ -32,9 +32,16 @@ import 'package:musify/widgets/confirmation_dialog.dart';
 import 'package:musify/widgets/no_artwork_cube.dart';
 
 class QueueWidget extends StatefulWidget {
-  const QueueWidget({super.key, this.isBottomSheet = false});
+  const QueueWidget({
+    super.key,
+    this.isBottomSheet = false,
+    this.focusCurrentSong = false,
+  });
 
   final bool isBottomSheet;
+
+  /// Starts a TV remote on the current song rather than at the top.
+  final bool focusCurrentSong;
 
   @override
   State<QueueWidget> createState() => _QueueWidgetState();
@@ -355,6 +362,7 @@ class _QueueWidgetState extends State<QueueWidget> {
           index: index,
           queueEntryId: queueEntryId,
           isCurrentSong: isCurrentSong,
+          autofocus: isCurrentSong && widget.focusCurrentSong,
           colorScheme: colorScheme,
           onTap: () {
             audioHandler.skipToSong(index);
@@ -389,6 +397,7 @@ class QueueTile extends StatelessWidget {
     required this.index,
     required this.queueEntryId,
     required this.isCurrentSong,
+    this.autofocus = false,
     required this.colorScheme,
     required this.onTap,
     required this.onDismissed,
@@ -399,6 +408,7 @@ class QueueTile extends StatelessWidget {
   final int index;
   final String queueEntryId;
   final bool isCurrentSong;
+  final bool autofocus;
   final ColorScheme colorScheme;
   final VoidCallback onTap;
   final VoidCallback onDismissed;
@@ -428,6 +438,15 @@ class QueueTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         child: InkWell(
           onTap: onTap,
+          autofocus: autofocus,
+          // The scroll to the current song is only an estimate; make sure the
+          // focused tile ends up on screen.
+          onFocusChange: autofocus
+              ? (focused) {
+                  if (focused)
+                    Scrollable.ensureVisible(context, alignment: 0.3);
+                }
+              : null,
           borderRadius: BorderRadius.circular(14),
           splashColor: Colors.transparent,
           highlightColor: colorScheme.onSurface.withValues(alpha: 0.06),
