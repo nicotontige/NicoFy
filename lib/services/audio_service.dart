@@ -921,13 +921,18 @@ class MusifyAudioHandler extends BaseAudioHandler {
     final baseYtid = _getCurrentSongForRecommendations()?['ytid']?.toString();
     if (baseYtid == null || baseYtid.isEmpty) return;
 
+    // A player that is already idle has nothing loaded yet — a queue brought
+    // back at launch, or one left by stop(). Only going idle *during* the
+    // fetch means playback was stopped and the skip should be dropped.
+    final wasIdle = audioPlayer.processingState == ProcessingState.idle;
+
     try {
       final recommended = await _fetchRecommendedSong(baseYtid);
 
       // Fetching takes a few seconds, long enough for a sleep timer to fire
       // or the player to be stopped; neither wants a song starting now.
       if (sleepTimerExpired ||
-          audioPlayer.processingState == ProcessingState.idle) {
+          (!wasIdle && audioPlayer.processingState == ProcessingState.idle)) {
         return;
       }
 
