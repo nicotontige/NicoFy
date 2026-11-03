@@ -26,6 +26,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:musify/constants/version.dart';
 import 'package:musify/screens/about_page.dart';
 import 'package:musify/screens/artist_page.dart';
+import 'package:musify/screens/auto_song_picker_page.dart';
 import 'package:musify/screens/bottom_navigation_page.dart';
 import 'package:musify/screens/equalizer_page.dart';
 import 'package:musify/screens/home_page.dart';
@@ -290,6 +291,11 @@ class NavigationManager {
                 path: 'scrobbling',
                 pageBuilder: (context, state) =>
                     _pushPage(child: const ScrobblingPage(), state: state),
+              ),
+              GoRoute(
+                path: 'song-picker',
+                pageBuilder: (context, state) =>
+                    _pushPage(child: const AutoSongPickerPage(), state: state),
               ),
               GoRoute(
                 path: 'import-spotify-playlist',

@@ -37,6 +37,12 @@ final playNextSongAutomatically = ValueNotifier<bool>(
   Hive.box('settings').get('playNextSongAutomatically', defaultValue: false),
 );
 
+/// Which lengths the automatic song picker may choose: 'songs' (shorter
+/// than `autoPickMixMinDuration`), 'mixes' (that long or longer) or 'any'.
+final autoPickLength = ValueNotifier<String>(
+  Hive.box('settings').get('autoPickLength', defaultValue: 'any'),
+);
+
 final useSystemColor = ValueNotifier<bool>(
   Hive.box('settings').get('useSystemColor', defaultValue: true),
 );
@@ -158,6 +164,7 @@ void reloadSettingsFromStorage() {
     'playNextSongAutomatically',
     defaultValue: false,
   );
+  autoPickLength.value = settings.get('autoPickLength', defaultValue: 'any');
   useSystemColor.value = settings.get('useSystemColor', defaultValue: true);
   usePureBlackColor.value = settings.get(
     'usePureBlackColor',
