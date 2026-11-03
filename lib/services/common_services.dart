@@ -612,7 +612,27 @@ Future<List<Map<String, int>>> getSkipSegments(String id) async {
   }
 }
 
-/// The first song related to [songYtId] whose ytid is not in [excludedYtIds].
+/// From this length on, the automatic song picker treats a video as a mix
+/// (a DJ set, a compilation) rather than a song.
+const autoPickMixMinDuration = Duration(minutes: 15);
+
+/// Whether [song] is a length the automatic song picker is allowed to choose.
+/// A live stream has no end, so it only counts as a mix.
+bool matchesAutoPickLength(Map song) {
+  final seconds = song['duration'];
+  final isMix =
+      song['isLive'] == true ||
+      (seconds is int && seconds >= autoPickMixMinDuration.inSeconds);
+
+  return switch (autoPickLength.value) {
+    'songs' => !isMix,
+    'mixes' => isMix,
+    _ => true,
+  };
+}
+
+/// The first song related to [songYtId] whose ytid is not in [excludedYtIds]
+/// and whose length suits the automatic song picker.
 Future<Map<String, dynamic>?> getSimilarSong(
   String songYtId, {
   Set<String> excludedYtIds = const {},
@@ -623,7 +643,8 @@ Future<Map<String, dynamic>?> getSimilarSong(
 
     for (final video in relatedSongs) {
       final candidate = returnSongLayout(0, video);
-      if (!excludedYtIds.contains(candidate['ytid']?.toString())) {
+      if (!excludedYtIds.contains(candidate['ytid']?.toString()) &&
+          matchesAutoPickLength(candidate)) {
         return candidate;
       }
     }

@@ -242,22 +242,11 @@ class SettingsPage extends StatelessWidget {
             );
           },
         ),
-        ValueListenableBuilder<bool>(
-          valueListenable: playNextSongAutomatically,
-          builder: (_, value, __) {
-            return CustomBar(
-              context.l10n!.automaticSongPicker,
-              FluentIcons.music_note_2_play_20_regular,
-              description: context.l10n!.automaticSongPickerDescription,
-              trailing: Switch(
-                value: value,
-                onChanged: (value) {
-                  _toggleAutoPlayNext(context, value);
-                  showToast(context, context.l10n!.settingChangedMsg);
-                },
-              ),
-            );
-          },
+        CustomBar(
+          context.l10n!.automaticSongPicker,
+          FluentIcons.music_note_2_play_20_regular,
+          description: context.l10n!.automaticSongPickerDescription,
+          onTap: () => context.push('/settings/song-picker'),
         ),
         ValueListenableBuilder<bool>(
           valueListenable: externalRecommendations,
@@ -760,12 +749,6 @@ class SettingsPage extends StatelessWidget {
   void _toggleSponsorBlock(BuildContext context, bool value) {
     addOrUpdateData<bool>('settings', 'sponsorBlockSupport', value);
     sponsorBlockSupport.value = value;
-    showToast(context, context.l10n!.settingChangedMsg);
-  }
-
-  void _toggleAutoPlayNext(BuildContext context, bool value) {
-    addOrUpdateData<bool>('settings', 'playNextSongAutomatically', value);
-    playNextSongAutomatically.value = value;
     showToast(context, context.l10n!.settingChangedMsg);
   }
 
