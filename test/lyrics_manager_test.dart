@@ -101,7 +101,11 @@ void main() {
 
     test('slugs fold accents and reject non-Latin text', () {
       expect(lyricsSlug('Beyoncé  Knowles'), 'beyonce-knowles');
-      expect(lyricsSlug("Don't Stop!"), 'dont-stop');
+      expect(lyricsSlug("Don't Stop!"), 'don-t-stop');
+      expect(
+        lyricsSlug('Pour que tu m\u2019aimes encore'),
+        'pour-que-tu-m-aimes-encore',
+      );
       expect(lyricsSlug('فيروز'), '');
       expect(lyricsManiaSlug(' Hello World '), 'hello_world');
     });
