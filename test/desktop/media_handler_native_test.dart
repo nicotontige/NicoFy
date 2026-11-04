@@ -9,6 +9,7 @@ import 'package:just_audio_media_kit/just_audio_media_kit.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:nicofy/services/audio_service.dart';
 import 'package:nicofy/services/linux_media_controls.dart';
+import 'package:nicofy/services/queue_persistence_service.dart';
 import 'package:nicofy/services/settings_manager.dart';
 
 import '../support/audio_fixture.dart';
@@ -96,6 +97,9 @@ void main() {
         offlineMode.value = true;
         playNextSongAutomatically.value = false;
         repeatNotifier.value = AudioServiceRepeatMode.none;
+        // The handler brings back the queue the previous test left behind;
+        // each test starts from its own two-song queue instead.
+        await queuePersistenceService.clear();
         handler = NicoFyAudioHandler();
         await handler.setVolume(0);
         errors = [];
