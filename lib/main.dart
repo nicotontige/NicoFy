@@ -28,12 +28,15 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:just_audio_media_kit/just_audio_media_kit.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:musify/extensions/l10n.dart';
 import 'package:musify/localization/app_localizations.dart';
 import 'package:musify/services/audio_service.dart';
 import 'package:musify/services/data_manager.dart';
+import 'package:musify/services/desktop_media_artwork.dart';
 import 'package:musify/services/io_service.dart';
+import 'package:musify/services/linux_media_controls.dart';
 import 'package:musify/services/listening_stats_service.dart';
 import 'package:musify/services/logger_service.dart';
 import 'package:musify/services/playlist_sharing.dart';
@@ -42,15 +45,19 @@ import 'package:musify/services/router_service.dart';
 import 'package:musify/services/settings_manager.dart';
 import 'package:musify/services/stream_buffer_service.dart';
 import 'package:musify/services/update_manager.dart';
+import 'package:musify/services/windows_media_controls.dart';
 import 'package:musify/theme/app_themes.dart';
 import 'package:musify/utilities/flutter_toast.dart';
 import 'package:musify/utilities/language_utils.dart';
+import 'package:musify/utilities/platform_utils.dart';
 import 'package:musify/utilities/playlist_utils.dart';
 import 'package:musify/utilities/sharing_intent.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 
 late MusifyAudioHandler audioHandler;
+LinuxMediaControls? linuxMediaControls;
+WindowsMediaControls? windowsMediaControls;
 StreamSubscription<String?>? sharingIntentSubscription;
 StreamSubscription<Uri?>? appLinksSubscription;
 
@@ -118,7 +125,9 @@ class _MusifyState extends State<Musify> with WidgetsBindingObserver {
 
     WidgetsBinding.instance.addObserver(this);
 
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    if (isMobilePlatform) {
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    }
 
     final platformDispatcher = PlatformDispatcher.instance;
 
@@ -133,24 +142,26 @@ class _MusifyState extends State<Musify> with WidgetsBindingObserver {
 
     offlineMode.addListener(_onOfflineModeChanged);
 
-    sharingIntentSubscription = ReceiveSharingIntent.getTextStream().listen(
-      (String? value) async {
-        await consumeYoutubeSharedTextIntent(
-          value,
-          audioHandler: audioHandler,
-          onError: (error, stackTrace) {
-            logger.log(
-              'Error while playing shared song:',
-              error: error,
-              stackTrace: stackTrace,
-            );
-          },
-        );
-      },
-      onError: (err) {
-        logger.log('getTextStream error:', error: err);
-      },
-    );
+    if (isMobilePlatform) {
+      sharingIntentSubscription = ReceiveSharingIntent.getTextStream().listen(
+        (String? value) async {
+          await consumeYoutubeSharedTextIntent(
+            value,
+            audioHandler: audioHandler,
+            onError: (error, stackTrace) {
+              logger.log(
+                'Error while playing shared song:',
+                error: error,
+                stackTrace: stackTrace,
+              );
+            },
+          );
+        },
+        onError: (err) {
+          logger.log('getTextStream error:', error: err);
+        },
+      );
+    }
 
     try {
       LicenseRegistry.addLicense(() async* {
@@ -167,7 +178,7 @@ class _MusifyState extends State<Musify> with WidgetsBindingObserver {
       );
     }
 
-    if (!isFdroidBuild) {
+    if (!isFdroidBuild && isMobilePlatform) {
       if (shouldWeCheckUpdates.value == true) {
         if (!isUpdateChecked && kReleaseMode) {
           SchedulerBinding.instance.addPostFrameCallback((_) {
@@ -219,6 +230,8 @@ class _MusifyState extends State<Musify> with WidgetsBindingObserver {
     offlineMode.removeListener(_onOfflineModeChanged);
     PlatformDispatcher.instance.onPlatformBrightnessChanged = null;
 
+    unawaited(linuxMediaControls?.dispose());
+    unawaited(windowsMediaControls?.dispose());
     Hive.close();
     unawaited(sharingIntentSubscription?.cancel());
     unawaited(appLinksSubscription?.cancel());
@@ -290,27 +303,105 @@ Future<void> initialisation() async {
       Hive.openBox('cache'),
     ]);
 
-    audioHandler = await AudioService.init(
-      builder: MusifyAudioHandler.new,
-      config: const AudioServiceConfig(
-        androidNotificationChannelId: 'com.gokadzev.musify',
-        androidNotificationChannelName: 'Musify',
-        androidNotificationIcon: 'drawable/ic_launcher_foreground',
-        androidShowNotificationBadge: true,
-        androidStopForegroundOnPause: false,
-        // Handed to Android Auto on the browsable root. Without the search
-        // flag the car never offers a search box, and without the content
-        // style keys it falls back to an undifferentiated list of everything.
-        androidBrowsableRootExtras: {
-          AndroidContentStyle.supportedKey: true,
-          AndroidContentStyle.browsableHintKey:
-              AndroidContentStyle.gridItemHintValue,
-          AndroidContentStyle.playableHintKey:
-              AndroidContentStyle.listItemHintValue,
-          'android.media.browse.SEARCH_SUPPORTED': true,
-        },
-      ),
-    );
+    if (isMobilePlatform) {
+      audioHandler = await AudioService.init(
+        builder: MusifyAudioHandler.new,
+        config: const AudioServiceConfig(
+          androidNotificationChannelId: 'com.gokadzev.musify',
+          androidNotificationChannelName: 'Musify',
+          androidNotificationIcon: 'drawable/ic_launcher_foreground',
+          androidShowNotificationBadge: true,
+          androidStopForegroundOnPause: false,
+          // Handed to Android Auto on the browsable root. Without the search
+          // flag the car never offers a search box, and without the content
+          // style keys it falls back to an undifferentiated list of everything.
+          androidBrowsableRootExtras: {
+            AndroidContentStyle.supportedKey: true,
+            AndroidContentStyle.browsableHintKey:
+                AndroidContentStyle.gridItemHintValue,
+            AndroidContentStyle.playableHintKey:
+                AndroidContentStyle.listItemHintValue,
+            'android.media.browse.SEARCH_SUPPORTED': true,
+          },
+        ),
+      );
+    } else {
+      // Use the desktop audio backend without mobile service plugins.
+      JustAudioMediaKit.title = 'Musify';
+      JustAudioMediaKit.ensureInitialized();
+      audioHandler = MusifyAudioHandler();
+    }
+
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.windows) {
+      final artwork = DesktopMediaArtwork();
+      final controls = WindowsMediaControls(
+        canGoNext: () => audioHandler.canSkipToNext,
+        canGoPrevious: () => audioHandler.hasPrevious,
+        navigationChanges: Listenable.merge([
+          repeatNotifier,
+          playNextSongAutomatically,
+          offlineMode,
+        ]),
+        resolveArtwork: artwork.resolve,
+        onError: (error, stackTrace) => logger.log(
+          'Windows media controls error',
+          error: error,
+          stackTrace: stackTrace,
+        ),
+      );
+      try {
+        await controls.start(audioHandler);
+        windowsMediaControls = controls;
+      } catch (error, stackTrace) {
+        logger.log(
+          'Could not initialize Windows media controls',
+          error: error,
+          stackTrace: stackTrace,
+        );
+      }
+    }
+
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.linux) {
+      final artwork = DesktopMediaArtwork();
+      final controls = LinuxMediaControls(
+        handler: audioHandler,
+        skipToNext: () => audioHandler.skipToNext(
+          playWhenReady: audioHandler.shouldContinuePlayback,
+        ),
+        skipToPrevious: () => audioHandler.skipToPrevious(
+          playWhenReady: audioHandler.shouldContinuePlayback,
+        ),
+        resolveArtwork: artwork.resolve,
+        volume: () => audioHandler.volume,
+        volumeStream: audioHandler.volumeStream,
+        setVolume: audioHandler.setVolume,
+        canGoNext: () => audioHandler.canSkipToNext,
+        navigationChanges: Listenable.merge([
+          repeatNotifier,
+          playNextSongAutomatically,
+          offlineMode,
+        ]),
+        canGoPrevious: () => audioHandler.hasPrevious,
+        raise: () =>
+            const MethodChannel('musify/window').invokeMethod<void>('raise'),
+        position: () => audioHandler.currentPositionData.position,
+        onError: (error, stackTrace) => logger.log(
+          'Linux media controls error',
+          error: error,
+          stackTrace: stackTrace,
+        ),
+      );
+      try {
+        await controls.start();
+        linuxMediaControls = controls;
+      } catch (error, stackTrace) {
+        logger.log(
+          'Could not initialize Linux media controls',
+          error: error,
+          stackTrace: stackTrace,
+        );
+      }
+    }
 
     // Init router
     NavigationManager.instance;

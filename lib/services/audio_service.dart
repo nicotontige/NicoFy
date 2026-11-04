@@ -43,14 +43,20 @@ import 'package:musify/utilities/app_utils.dart';
 import 'package:musify/utilities/map_utils.dart';
 import 'package:musify/utilities/media_duration.dart';
 import 'package:musify/utilities/mediaitem.dart';
+import 'package:musify/utilities/platform_utils.dart';
 import 'package:musify/utilities/queue_entry_utils.dart';
 import 'package:rxdart/rxdart.dart';
 
 class MusifyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
   MusifyAudioHandler() {
-    _androidEqualizer = AndroidEqualizer();
+    final androidEqualizer = Platform.isAndroid ? AndroidEqualizer() : null;
+    _androidEqualizer = androidEqualizer;
     audioPlayer = AudioPlayer(
-      audioPipeline: AudioPipeline(androidAudioEffects: [_androidEqualizer]),
+      handleInterruptions: isMobilePlatform,
+      handleAudioSessionActivation: isMobilePlatform,
+      audioPipeline: androidEqualizer == null
+          ? null
+          : AudioPipeline(androidAudioEffects: [androidEqualizer]),
       audioLoadConfiguration: const AudioLoadConfiguration(
         androidLoadControl: AndroidLoadControl(
           maxBufferDuration: Duration(seconds: 60),
@@ -62,21 +68,25 @@ class MusifyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
 
     _androidAutoBrowser = AndroidAutoBrowser(this);
     _setupEventSubscriptions();
-    _androidAutoBrowser.setupMediaBrowserSubscriptions();
+    if (isAndroidPlatform) {
+      _androidAutoBrowser.setupMediaBrowserSubscriptions();
+    }
     _updatePlaybackState();
 
-    audioPlayer.setAndroidAudioAttributes(
-      const AndroidAudioAttributes(
-        contentType: AndroidAudioContentType.music,
-        usage: AndroidAudioUsage.media,
-      ),
-    );
+    if (isAndroidPlatform) {
+      audioPlayer.setAndroidAudioAttributes(
+        const AndroidAudioAttributes(
+          contentType: AndroidAudioContentType.music,
+          usage: AndroidAudioUsage.media,
+        ),
+      );
+    }
 
     _initialize();
   }
 
   // Player and service collaborators.
-  late final AndroidEqualizer _androidEqualizer;
+  late final AndroidEqualizer? _androidEqualizer;
   late final AudioPlayer audioPlayer;
   late final AndroidAutoBrowser _androidAutoBrowser;
   bool _equalizerInitialized = false;
@@ -109,6 +119,7 @@ class MusifyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
   Future<Map<String, dynamic>?>? _pendingRecommendation;
   String? _pendingRecommendationBase;
 
+  bool _queuePlayWhenReady = true;
   bool _completionEventPending = false;
   bool _completionHandlerLoadStarted = false;
 
@@ -165,6 +176,9 @@ class MusifyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
 
   Stream<PositionData> get positionDataStream => _positionDataStream;
 
+  Stream<double> get volumeStream => audioPlayer.volumeStream;
+  double get volume => audioPlayer.volume;
+
   /// Current snapshot, for listeners that subscribe while paused and would
   /// otherwise see nothing until the next position event.
   PositionData get currentPositionData => PositionData(
@@ -201,6 +215,9 @@ class MusifyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
   bool get hasNext =>
       _hasCurrentQueueIndex && _currentQueueIndex < _queueList.length - 1;
 
+  bool get shouldContinuePlayback =>
+      _currentLoadingIndex >= 0 ? _queuePlayWhenReady : audioPlayer.playing;
+
   bool get hasPrevious => _currentQueueIndex > 0 || _historyList.isNotEmpty;
 
   /// The player can pick a song on its own, so the queue running out is not
@@ -210,7 +227,11 @@ class MusifyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
       !offlineMode.value &&
       currentSong != null;
 
-  bool get canSkipToNext => hasNext || canFetchRecommendedSong;
+  bool get canSkipToNext =>
+      _hasCurrentQueueIndex &&
+      (hasNext ||
+          repeatNotifier.value == AudioServiceRepeatMode.all ||
+          canFetchRecommendedSong);
 
   static const _likeCustomAction = 'toggleLike';
 
@@ -636,8 +657,10 @@ class MusifyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
 
   Future<void> _initialize() async {
     try {
-      final session = await AudioSession.instance;
-      await session.configure(const AudioSessionConfiguration.music());
+      if (isMobilePlatform) {
+        final session = await AudioSession.instance;
+        await session.configure(const AudioSessionConfiguration.music());
+      }
 
       // Always set loop mode to off - we handle all repeating through _handleSongCompletion
       // This ensures ProcessingState.completed is always fired for song transitions
@@ -660,6 +683,7 @@ class MusifyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
   }
 
   Future<bool> _ensureEqualizerConfigured({bool force = false}) async {
+    if (_androidEqualizer == null) return false;
     if (_equalizerInitialized) return true;
 
     final now = DateTime.now();
@@ -685,8 +709,11 @@ class MusifyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
   }
 
   Future<bool> _configureEqualizer() async {
+    final equalizer = _androidEqualizer;
+    if (equalizer == null) return false;
+
     try {
-      final params = await _androidEqualizer.parameters.timeout(
+      final params = await equalizer.parameters.timeout(
         const Duration(seconds: 3),
       );
 
@@ -701,7 +728,7 @@ class MusifyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
         }
       }
 
-      await _androidEqualizer.setEnabled(equalizerEnabled.value);
+      await equalizer.setEnabled(equalizerEnabled.value);
       _equalizerInitialized = true;
       _equalizerRetryNotBefore = DateTime.fromMillisecondsSinceEpoch(0);
       return true;
@@ -719,12 +746,13 @@ class MusifyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
   }
 
   Future<AndroidEqualizerParameters?> getEqualizerParameters() async {
+    final equalizer = _androidEqualizer;
+    if (equalizer == null) return null;
+
     final initialized = await _ensureEqualizerConfigured();
     if (!initialized) return null;
     try {
-      return await _androidEqualizer.parameters.timeout(
-        const Duration(seconds: 2),
-      );
+      return await equalizer.parameters.timeout(const Duration(seconds: 2));
     } catch (e, stackTrace) {
       logger.log(
         'Failed to get equalizer parameters',
@@ -736,10 +764,13 @@ class MusifyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
   }
 
   Future<void> setEqualizerEnabled(bool enabled) async {
+    final equalizer = _androidEqualizer;
+    if (equalizer == null) return;
+
     final initialized = await _ensureEqualizerConfigured(force: true);
     if (!initialized) return;
     try {
-      await _androidEqualizer.setEnabled(enabled);
+      await equalizer.setEnabled(enabled);
       equalizerEnabled.value = enabled;
       unawaited(addOrUpdateData<bool>('settings', 'equalizerEnabled', enabled));
     } catch (e, stackTrace) {
@@ -752,11 +783,14 @@ class MusifyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
   }
 
   Future<void> setEqualizerBandGain(int index, double gain) async {
+    final equalizer = _androidEqualizer;
+    if (equalizer == null) return;
+
     final initialized = await _ensureEqualizerConfigured(force: true);
     if (!initialized) return;
 
     try {
-      final params = await _androidEqualizer.parameters;
+      final params = await equalizer.parameters;
       if (index < 0 || index >= params.bands.length) {
         return;
       }
@@ -779,11 +813,14 @@ class MusifyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
   }
 
   Future<void> resetEqualizerBands() async {
+    final equalizer = _androidEqualizer;
+    if (equalizer == null) return;
+
     final initialized = await _ensureEqualizerConfigured(force: true);
     if (!initialized) return;
 
     try {
-      final params = await _androidEqualizer.parameters;
+      final params = await equalizer.parameters;
       for (final band in params.bands) {
         await band.setGain(0);
       }
@@ -1536,6 +1573,7 @@ class MusifyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
           },
           androidCompactActionIndices: const [0, 1, 3],
           processingState: AudioProcessingState.loading,
+          speed: audioPlayer.speed,
           queueIndex:
               queueIndex ?? (_hasCurrentQueueIndex ? _currentQueueIndex : null),
           updateTime: DateTime.now(),
@@ -1550,7 +1588,7 @@ class MusifyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
     }
   }
 
-  Future<void> _playFromQueue(int index) async {
+  Future<void> _playFromQueue(int index, {bool playWhenReady = true}) async {
     if (index < 0 || index >= _queueList.length) {
       logger.log('Invalid queue index: $index');
       return;
@@ -1584,6 +1622,7 @@ class MusifyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
     // Kept outside the try so that the failure paths below can name the queue
     // entry they belong to, rather than an index the delay would make stale.
     String? failedEntryId;
+    _queuePlayWhenReady = playWhenReady;
 
     try {
       final previousQueueIndex = _currentQueueIndex;
@@ -1608,6 +1647,7 @@ class MusifyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
         _queueList[index],
         mediaId: uniqueId,
         transitionId: currentTransitionId,
+        playWhenReady: playWhenReady,
       );
 
       // Only process result if this is still the current transition
@@ -1913,8 +1953,10 @@ class MusifyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
   Future<void> onTaskRemoved() async {
     try {
       await stop();
-      final session = await AudioSession.instance;
-      await session.setActive(false);
+      if (isMobilePlatform) {
+        final session = await AudioSession.instance;
+        await session.setActive(false);
+      }
     } catch (e, stackTrace) {
       logger.log('Error in onTaskRemoved', error: e, stackTrace: stackTrace);
     }
@@ -1923,6 +1965,8 @@ class MusifyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
 
   @override
   Future<void> play() async {
+    if (isDesktopPlatform && _currentLoadingIndex >= 0)
+      _queuePlayWhenReady = true;
     try {
       if (audioPlayer.audioSource == null) {
         // A queue restored at launch carries no loaded source yet. Start it
@@ -1960,6 +2004,8 @@ class MusifyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
 
   @override
   Future<void> pause() async {
+    if (isDesktopPlatform && _currentLoadingIndex >= 0)
+      _queuePlayWhenReady = false;
     try {
       listeningStatsService.recordListeningSessionProgress(
         wasPlaying: audioPlayer.playing,
@@ -1969,6 +2015,14 @@ class MusifyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
       await audioPlayer.pause();
     } catch (e, stackTrace) {
       logger.log('Error in pause()', error: e, stackTrace: stackTrace);
+    }
+  }
+
+  Future<void> setVolume(double value) async {
+    try {
+      await audioPlayer.setVolume(value.clamp(0.0, 1.0));
+    } catch (e, stackTrace) {
+      logger.log('Error in setVolume()', error: e, stackTrace: stackTrace);
     }
   }
 
@@ -2010,6 +2064,12 @@ class MusifyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
     _activePreloadCount = 0;
     _preloadingYtIds.clear();
     _preloadedYtIds.clear();
+  }
+
+  @override
+  Future<void> setSpeed(double speed) async {
+    await audioPlayer.setSpeed(speed);
+    _updatePlaybackState();
   }
 
   @override
@@ -2130,7 +2190,12 @@ class MusifyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
     return transitionId != null && transitionId != _currentLoadingTransitionId;
   }
 
-  Future<bool> playSong(Map song, {String? mediaId, int? transitionId}) async {
+  Future<bool> playSong(
+    Map song, {
+    String? mediaId,
+    int? transitionId,
+    bool playWhenReady = true,
+  }) async {
     try {
       final songData = cloneMap(song);
 
@@ -2198,6 +2263,7 @@ class MusifyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
         mediaId: mediaId,
         transitionId: transitionId,
         initialPosition: _consumeRestoredPosition(songData),
+        playWhenReady: playWhenReady,
       );
     } catch (e, stackTrace) {
       logger.log('Error playing song', error: e, stackTrace: stackTrace);
@@ -2308,6 +2374,7 @@ class MusifyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
     bool allowOnlineRetry = true,
     int? transitionId,
     Duration? initialPosition,
+    bool playWhenReady = true,
   }) async {
     try {
       // Final staleness check before we touch the audio player.
@@ -2352,16 +2419,20 @@ class MusifyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
           wasPlaying: wasPlayingBeforeSwap,
         )
         ..startListeningSession(song, duration: audioPlayer.duration);
-      unawaited(
-        audioPlayer.play().catchError((Object e, StackTrace stackTrace) {
-          logger.log(
-            'Error starting playback',
-            error: e,
-            stackTrace: stackTrace,
-          );
-          _failures.lastError = e.toString();
-        }),
-      );
+      final startPlayback = transitionId == null || !isDesktopPlatform
+          ? playWhenReady
+          : _queuePlayWhenReady;
+      if (startPlayback)
+        unawaited(
+          audioPlayer.play().catchError((Object e, StackTrace stackTrace) {
+            logger.log(
+              'Error starting playback',
+              error: e,
+              stackTrace: stackTrace,
+            );
+            _failures.lastError = e.toString();
+          }),
+        );
       unawaited(updateRecentlyPlayed(song['ytid'], songFallback: song));
 
       if (!isOffline) {
@@ -2398,6 +2469,7 @@ class MusifyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
           mediaId: mediaId,
           transitionId: transitionId,
           initialPosition: initialPosition,
+          playWhenReady: playWhenReady,
         );
       }
 
@@ -2410,6 +2482,7 @@ class MusifyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
           song,
           mediaId: mediaId,
           transitionId: transitionId,
+          playWhenReady: playWhenReady,
           invalidateCache: true,
           initialPosition: initialPosition,
         );
@@ -2424,6 +2497,7 @@ class MusifyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
     Map song, {
     String? mediaId,
     int? transitionId,
+    bool playWhenReady = true,
     bool invalidateCache = false,
     Duration? initialPosition,
   }) async {
@@ -2447,6 +2521,7 @@ class MusifyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
       allowOnlineRetry: false,
       transitionId: transitionId,
       initialPosition: initialPosition,
+      playWhenReady: playWhenReady,
     );
   }
 
@@ -2455,6 +2530,7 @@ class MusifyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
     String? mediaId,
     int? transitionId,
     Duration? initialPosition,
+    bool playWhenReady = true,
   }) async {
     if (offlineMode.value) return false;
     return _retryPlayWithFreshUrl(
@@ -2462,6 +2538,7 @@ class MusifyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
       mediaId: mediaId,
       transitionId: transitionId,
       initialPosition: initialPosition,
+      playWhenReady: playWhenReady,
     );
   }
 
@@ -2816,13 +2893,16 @@ class MusifyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
   Future<void> skipToQueueItem(int index) => skipToSong(index);
 
   @override
-  Future<void> skipToNext() async {
+  Future<void> skipToNext({bool playWhenReady = true}) async {
     try {
       if (_currentQueueIndex < _queueList.length - 1) {
-        await _playFromQueue(_currentQueueIndex + 1);
+        await _playFromQueue(
+          _currentQueueIndex + 1,
+          playWhenReady: playWhenReady,
+        );
       } else if (repeatNotifier.value == AudioServiceRepeatMode.all &&
           _queueList.isNotEmpty) {
-        await _playFromQueue(0);
+        await _playFromQueue(0, playWhenReady: playWhenReady);
       } else if (canFetchRecommendedSong && _currentLoadingIndex == -1) {
         // At the end of the queue: play what the player would have picked on
         // its own once the current song ended (closes: #952)
@@ -2844,7 +2924,7 @@ class MusifyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
   }
 
   @override
-  Future<void> skipToPrevious() async {
+  Future<void> skipToPrevious({bool playWhenReady = true}) async {
     try {
       // Back a few seconds into a song means "play this again", not "play the
       // one before": stepping back and forward again is a chore, and it counts
@@ -2859,7 +2939,10 @@ class MusifyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
       }
 
       if (_currentQueueIndex > 0) {
-        await _playFromQueue(_currentQueueIndex - 1);
+        await _playFromQueue(
+          _currentQueueIndex - 1,
+          playWhenReady: playWhenReady,
+        );
       } else if (_historyList.isNotEmpty) {
         final lastSong = cloneMap(_historyList.removeLast());
         _queueList.insert(0, lastSong);
@@ -2867,7 +2950,7 @@ class MusifyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
         _currentLoadingIndex = -1;
         _currentLoadingTransitionId = -1;
         _updateQueueMediaItems();
-        await _playFromQueue(0);
+        await _playFromQueue(0, playWhenReady: playWhenReady);
       }
 
       _cleanupOldPreloadedSongs();
