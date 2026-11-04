@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:musify/utilities/app_utils.dart';
+import 'package:nicofy/utilities/app_utils.dart';
 
 /// gokadzev/Musify#957: the previous button always stepped back a song, so
 /// replaying the one playing meant going back and then forward again, which

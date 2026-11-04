@@ -28,12 +28,19 @@ jobs:
         channel: "stable"
 
     #
-    - run: |
-          echo keyPassword=\${{ secrets.KEY_STORE }} > ${{env.PROPERTIES_PATH}}
-          echo storePassword=\${{ secrets.KEY_PASSWORD }} >> ${{env.PROPERTIES_PATH}}
-          echo keyAlias=\${{ secrets.KEY_ALIAS }} >> ${{env.PROPERTIES_PATH}}
-    #
-    - run: echo "${{ secrets.KEYSTORE2 }}" | base64 --decode > android/app/key.jks
+    - name: Restore signing key
+      env:
+        KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+        KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+        KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+      run: |
+        echo "$KEYSTORE_BASE64" | base64 --decode > android/app/key.jks
+        {
+          echo "storePassword=$KEYSTORE_PASSWORD"
+          echo "keyAlias=$KEY_ALIAS"
+          echo "keyPassword=$KEY_PASSWORD"
+        } > "$PROPERTIES_PATH"
 
     # Get flutter dependencies.
     - run: flutter pub get
@@ -46,13 +53,13 @@ jobs:
     - name: Release arm64 APK
       uses: svenstaro/upload-release-action@v2
       with:
-        repo_name: gokadzev/Musify
+        repo_name: nicotontige/NicoFy
         repo_token: ${{ secrets.GITHUB_TOKEN }}
         file: build/app/outputs/flutter-apk/app-arm64-v8a-github-release.apk
-        asset_name: Musify-arm64-v8a.apk
+        asset_name: NicoFy-arm64-v8a.apk
         tag: ${{ github.ref }}
         prerelease: true
         overwrite: true
-        body: "**New Musify Pre-Release!** \n
-        with pre-release / [BETA] builds you have access to the latest build of the app before it is released as stable-release version. Only use pre-release if you test the app, provide feedback, and help us improve its performance. Please note that pre-release versions of the app may be pretty unstable. You may experience crashes, bugs, or other issues while using the app. This is because pre-release version is still in development.
+        body: "**New NicoFy Pre-Release!** \n
+        with pre-release / [BETA] builds you have access to the latest build of the app before it is released as stable-release version. Please note that pre-release versions of the app may be pretty unstable. You may experience crashes, bugs, or other issues while using the app. This is because pre-release version is still in development.
         "

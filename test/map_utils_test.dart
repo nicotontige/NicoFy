@@ -1,7 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:musify/utilities/map_utils.dart';
+import 'package:nicofy/utilities/map_utils.dart';
 
 void main() {
   group('songYtid', () {

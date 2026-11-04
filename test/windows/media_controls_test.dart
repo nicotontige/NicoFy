@@ -4,9 +4,9 @@ import 'package:audio_service/audio_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:musify/services/windows_media_controls.dart';
+import 'package:nicofy/services/windows_media_controls.dart';
 
-const _channel = MethodChannel('musify/media_controls');
+const _channel = MethodChannel('nicofy/media_controls');
 
 class _NavigationChanges extends ChangeNotifier {
   bool get observed => hasListeners;
@@ -291,7 +291,7 @@ void main() {
   );
   test('resolved square artwork reaches Windows as a local file', () async {
     await controls.dispose();
-    final square = Uri.file(r'C:\Musify\cover.png', windows: true);
+    final square = Uri.file(r'C:\NicoFy\cover.png', windows: true);
     controls = WindowsMediaControls(
       canGoNext: () => canNext,
       canGoPrevious: () => canPrevious,
@@ -303,7 +303,7 @@ void main() {
     play(artwork: Uri.parse('https://example.com/wide.jpg'));
     await flush();
     expect(getUpdate()['artUri'], '');
-    expect(getUpdate()['artPath'], r'C:\Musify\cover.png');
+    expect(getUpdate()['artPath'], r'C:\NicoFy\cover.png');
     expect(getUpdate()['title'], 'Song');
   });
 }

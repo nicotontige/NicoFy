@@ -35,7 +35,7 @@ MediaControls::MediaControls(HWND window, flutter::BinaryMessenger* messenger)
     : window_(window) {
   channel_ =
       std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
-          messenger, "musify/media_controls",
+          messenger, "nicofy/media_controls",
           &flutter::StandardMethodCodec::GetInstance());
   channel_->SetMethodCallHandler(
       [this](const auto& call, auto result) {

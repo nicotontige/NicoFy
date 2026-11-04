@@ -1,12 +1,12 @@
 /*
  *     Copyright (C) 2026 Valeri Gokadze
  *
- *     Musify is free software: you can redistribute it and/or modify
+ *     NicoFy is free software: you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
  *     the Free Software Foundation, either version 3 of the License, or
  *     (at your option) any later version.
  *
- *     Musify is distributed in the hope that it will be useful,
+ *     NicoFy is distributed in the hope that it will be useful,
  *     but WITHOUT ANY WARRANTY; without even the implied warranty of
  *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *     GNU General Public License for more details.
@@ -15,8 +15,10 @@
  *     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  *
  *
- *     For more information about Musify, including how to contribute,
- *     please visit: https://github.com/gokadzev/Musify
+ *     NicoFy is a modified version of Musify by Valeri Gokadze
+ *     (https://github.com/gokadzev/Musify).
+ *     For more information about NicoFy, please visit:
+ *     https://github.com/nicotontige/NicoFy
  */
 
 import 'dart:async';
@@ -26,29 +28,29 @@ import 'package:audio_service/audio_service.dart';
 import 'package:audio_session/audio_session.dart';
 import 'package:hive/hive.dart';
 import 'package:just_audio/just_audio.dart';
-import 'package:musify/constants/clients.dart';
-import 'package:musify/main.dart';
-import 'package:musify/models/position_data.dart';
-import 'package:musify/models/song_chapter.dart';
-import 'package:musify/services/audio_service_android_auto.dart';
-import 'package:musify/services/chapters_service.dart';
-import 'package:musify/services/common_services.dart';
-import 'package:musify/services/data_manager.dart';
-import 'package:musify/services/listening_stats_service.dart';
-import 'package:musify/services/playback_failure_recovery.dart';
-import 'package:musify/services/queue_persistence_service.dart';
-import 'package:musify/services/settings_manager.dart';
-import 'package:musify/services/stream_buffer_service.dart';
-import 'package:musify/utilities/app_utils.dart';
-import 'package:musify/utilities/map_utils.dart';
-import 'package:musify/utilities/media_duration.dart';
-import 'package:musify/utilities/mediaitem.dart';
-import 'package:musify/utilities/platform_utils.dart';
-import 'package:musify/utilities/queue_entry_utils.dart';
+import 'package:nicofy/constants/clients.dart';
+import 'package:nicofy/main.dart';
+import 'package:nicofy/models/position_data.dart';
+import 'package:nicofy/models/song_chapter.dart';
+import 'package:nicofy/services/audio_service_android_auto.dart';
+import 'package:nicofy/services/chapters_service.dart';
+import 'package:nicofy/services/common_services.dart';
+import 'package:nicofy/services/data_manager.dart';
+import 'package:nicofy/services/listening_stats_service.dart';
+import 'package:nicofy/services/playback_failure_recovery.dart';
+import 'package:nicofy/services/queue_persistence_service.dart';
+import 'package:nicofy/services/settings_manager.dart';
+import 'package:nicofy/services/stream_buffer_service.dart';
+import 'package:nicofy/utilities/app_utils.dart';
+import 'package:nicofy/utilities/map_utils.dart';
+import 'package:nicofy/utilities/media_duration.dart';
+import 'package:nicofy/utilities/mediaitem.dart';
+import 'package:nicofy/utilities/platform_utils.dart';
+import 'package:nicofy/utilities/queue_entry_utils.dart';
 import 'package:rxdart/rxdart.dart';
 
-class MusifyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
-  MusifyAudioHandler() {
+class NicoFyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
+  NicoFyAudioHandler() {
     final androidEqualizer = Platform.isAndroid ? AndroidEqualizer() : null;
     _androidEqualizer = androidEqualizer;
     audioPlayer = AudioPlayer(
@@ -1840,7 +1842,7 @@ class MusifyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
 
     await playPlaylistSong(
       playlist: {
-        'title': 'Musify',
+        'title': 'NicoFy',
         'source': 'system-recent',
         'list': [normalisedSong],
       },

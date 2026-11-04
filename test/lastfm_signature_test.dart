@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:musify/services/lastfm_client.dart';
+import 'package:nicofy/services/lastfm_client.dart';
 
 /// Last.fm refuses every call whose signature it cannot reproduce, and the
 /// rules are easy to get subtly wrong, so they are pinned here.

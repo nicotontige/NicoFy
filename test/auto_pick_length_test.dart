@@ -3,12 +3,12 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:musify/services/common_services.dart';
-import 'package:musify/services/settings_manager.dart';
+import 'package:nicofy/services/common_services.dart';
+import 'package:nicofy/services/settings_manager.dart';
 
 void main() {
   setUpAll(() async {
-    Hive.init(Directory.systemTemp.createTempSync('musify_auto_pick').path);
+    Hive.init(Directory.systemTemp.createTempSync('nicofy_auto_pick').path);
     await Hive.openBox('settings');
   });
 

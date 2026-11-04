@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 // ignore: depend_on_referenced_packages, pulled in by youtube_explode_dart
 import 'package:http_parser/http_parser.dart';
-import 'package:musify/utilities/app_utils.dart';
+import 'package:nicofy/utilities/app_utils.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 
 const _videoId = 'aBcDeFgHiJk';
@@ -48,7 +48,7 @@ void main() {
   // Hive; an empty box is enough to get its default.
   setUpAll(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
-    Hive.init(Directory.systemTemp.createTempSync('musify_test').path);
+    Hive.init(Directory.systemTemp.createTempSync('nicofy_test').path);
     await Hive.openBox('settings');
   });
 

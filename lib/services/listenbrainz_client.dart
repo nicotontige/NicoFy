@@ -1,12 +1,12 @@
 /*
  *     Copyright (C) 2026 Valeri Gokadze
  *
- *     Musify is free software: you can redistribute it and/or modify
+ *     NicoFy is free software: you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
  *     the Free Software Foundation, either version 3 of the License, or
  *     (at your option) any later version.
  *
- *     Musify is distributed in the hope that it will be useful,
+ *     NicoFy is distributed in the hope that it will be useful,
  *     but WITHOUT ANY WARRANTY; without even the implied warranty of
  *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *     GNU General Public License for more details.
@@ -15,16 +15,18 @@
  *     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  *
  *
- *     For more information about Musify, including how to contribute,
- *     please visit: https://github.com/gokadzev/Musify
+ *     NicoFy is a modified version of Musify by Valeri Gokadze
+ *     (https://github.com/gokadzev/Musify).
+ *     For more information about NicoFy, please visit:
+ *     https://github.com/nicotontige/NicoFy
  */
 
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
-import 'package:musify/constants/version.dart';
-import 'package:musify/models/scrobble.dart';
-import 'package:musify/services/scrobble_queue.dart';
+import 'package:nicofy/constants/version.dart';
+import 'package:nicofy/models/scrobble.dart';
+import 'package:nicofy/services/scrobble_queue.dart';
 
 const listenBrainzApiRoot = 'https://api.listenbrainz.org';
 const listenBrainzSettingsUrl = 'https://listenbrainz.org/settings/';
@@ -32,7 +34,7 @@ const listenBrainzSettingsUrl = 'https://listenbrainz.org/settings/';
 /// The ListenBrainz half of the scrobbling support.
 ///
 /// ListenBrainz asks for nothing but a user token, which the user copies from
-/// their own settings page, so this path works in any build of Musify.
+/// their own settings page, so this path works in any build of NicoFy.
 class ListenBrainzClient {
   ListenBrainzClient({
     http.Client? httpClient,
@@ -121,8 +123,8 @@ class ListenBrainzClient {
     'track_name': listen.title,
     if (listen.album != null) 'release_name': listen.album,
     'additional_info': {
-      'media_player': 'Musify',
-      'submission_client': 'Musify',
+      'media_player': 'NicoFy',
+      'submission_client': 'NicoFy',
       'submission_client_version': appVersion,
       if (listen.duration != null)
         'duration_ms': listen.duration!.inMilliseconds,

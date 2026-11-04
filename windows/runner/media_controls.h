@@ -10,7 +10,7 @@
 #include <string>
 
 // Owns one SMTC session tied to the app's top-level HWND. No second audio player
-// is created: all transport commands go back to Musify's existing Dart handler.
+// is created: all transport commands go back to NicoFy's existing Dart handler.
 class MediaControls {
  public:
   MediaControls(HWND window, flutter::BinaryMessenger* messenger);

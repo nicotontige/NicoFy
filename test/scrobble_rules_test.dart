@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:musify/utilities/scrobble_rules.dart';
+import 'package:nicofy/utilities/scrobble_rules.dart';
 
 /// The thresholds Last.fm and ListenBrainz ask every client to respect before
 /// a play is reported as a listen.

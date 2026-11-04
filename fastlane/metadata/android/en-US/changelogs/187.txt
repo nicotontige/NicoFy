@@ -1,0 +1,15 @@
+First release of NicoFy, a fork of Musify 10.6.0 that now goes its own way.
+
+- New name and app id (com.nicotontige.nicofy): it installs next to Musify, not over it. Export your data from Musify (Settings > Backup) and import it here.
+- Updates now come from github.com/nicotontige/NicoFy
+- Queue kept across app restarts
+- Chapter navigation inside long compilations
+- Search results sorted behind category tabs
+- Playback buffered to a file, so a slow network is not heard
+- "Made for kids" videos play
+- Back restarts the song when pressed mid-song
+- Next works when the queue is empty
+- Android Auto: like button and played-songs marker
+- Android TV support
+- Library: sorting, batch selection, offline status on each song
+- Scrobbling to Last.fm and ListenBrainz

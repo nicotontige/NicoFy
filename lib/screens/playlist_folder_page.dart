@@ -1,12 +1,12 @@
 /*
  *     Copyright (C) 2026 Valeri Gokadze
  *
- *     Musify is free software: you can redistribute it and/or modify
+ *     NicoFy is free software: you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
  *     the Free Software Foundation, either version 3 of the License, or
  *     (at your option) any later version.
  *
- *     Musify is distributed in the hope that it will be useful,
+ *     NicoFy is distributed in the hope that it will be useful,
  *     but WITHOUT ANY WARRANTY; without even the implied warranty of
  *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *     GNU General Public License for more details.
@@ -15,26 +15,28 @@
  *     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  *
  *
- *     For more information about Musify, including how to contribute,
- *     please visit: https://github.com/gokadzev/Musify
+ *     NicoFy is a modified version of Musify by Valeri Gokadze
+ *     (https://github.com/gokadzev/Musify).
+ *     For more information about NicoFy, please visit:
+ *     https://github.com/nicotontige/NicoFy
  */
 
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:musify/constants/app_constants.dart';
-import 'package:musify/extensions/l10n.dart';
-import 'package:musify/services/playlists_manager.dart';
-import 'package:musify/services/settings_manager.dart';
-import 'package:musify/utilities/app_utils.dart';
-import 'package:musify/utilities/flutter_toast.dart';
-import 'package:musify/utilities/playlist_utils.dart';
-import 'package:musify/utilities/sort_utils.dart';
-import 'package:musify/widgets/confirmation_dialog.dart';
-import 'package:musify/widgets/dialog_item.dart';
-import 'package:musify/widgets/mini_player_bottom_space.dart';
-import 'package:musify/widgets/playlist_bar.dart';
-import 'package:musify/widgets/popup_menu_item.dart';
-import 'package:musify/widgets/sort_chips.dart';
+import 'package:nicofy/constants/app_constants.dart';
+import 'package:nicofy/extensions/l10n.dart';
+import 'package:nicofy/services/playlists_manager.dart';
+import 'package:nicofy/services/settings_manager.dart';
+import 'package:nicofy/utilities/app_utils.dart';
+import 'package:nicofy/utilities/flutter_toast.dart';
+import 'package:nicofy/utilities/playlist_utils.dart';
+import 'package:nicofy/utilities/sort_utils.dart';
+import 'package:nicofy/widgets/confirmation_dialog.dart';
+import 'package:nicofy/widgets/dialog_item.dart';
+import 'package:nicofy/widgets/mini_player_bottom_space.dart';
+import 'package:nicofy/widgets/playlist_bar.dart';
+import 'package:nicofy/widgets/popup_menu_item.dart';
+import 'package:nicofy/widgets/sort_chips.dart';
 
 class PlaylistFolderPage extends StatefulWidget {
   const PlaylistFolderPage({

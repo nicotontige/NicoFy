@@ -1,10 +1,10 @@
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/foundation.dart';
-import 'package:musify/services/common_services.dart';
-import 'package:musify/services/playlists_manager.dart';
-import 'package:musify/services/settings_manager.dart';
-import 'package:musify/utilities/map_utils.dart';
-import 'package:musify/utilities/mediaitem.dart';
+import 'package:nicofy/services/common_services.dart';
+import 'package:nicofy/services/playlists_manager.dart';
+import 'package:nicofy/services/settings_manager.dart';
+import 'package:nicofy/utilities/map_utils.dart';
+import 'package:nicofy/utilities/mediaitem.dart';
 import 'package:rxdart/rxdart.dart';
 
 abstract interface class AndroidAutoHost {
@@ -132,7 +132,7 @@ class AndroidAutoBrowser {
       id: mediaId,
       playable: playable,
       displayTitle: song['title']?.toString(),
-      displaySubtitle: artist.isEmpty ? 'Musify' : artist,
+      displaySubtitle: artist.isEmpty ? 'NicoFy' : artist,
     );
   }
 

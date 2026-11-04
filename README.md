@@ -1,23 +1,21 @@
 <div align="center">
-<img src="https://github.com/gokadzev/Musify/raw/master/.github/assets/Musify-banner.png" width="100%">
 
-# Musify
+# NicoFy
 
-Unlock the full potential of music: Stream effortlessly with one app!
+**A music streaming app made in Flutter**
 
-[![Stars](https://img.shields.io/github/stars/gokadzev/Musify?style=flat-square&color=D3BEAB)](https://github.com/gokadzev/Musify/stargazers)
-[![Forks](https://img.shields.io/github/forks/gokadzev/Musify?style=flat-square&color=D3BEAB)](https://github.com/gokadzev/Musify/fork)
-[![Downloads](https://img.shields.io/github/downloads/gokadzev/Musify/total?style=flat-square&color=D3BEAB)](https://github.com/gokadzev/Musify/releases)
-[![GitHub release](https://img.shields.io/github/v/release/gokadzev/Musify?color=D3BEAB)](https://github.com/gokadzev/Musify/releases)
-[![License](https://img.shields.io/github/license/gokadzev/Musify?color=D3BEAB)](LICENSE)
+[![GitHub release](https://img.shields.io/github/v/release/nicotontige/NicoFy?color=D3BEAB)](https://github.com/nicotontige/NicoFy/releases)
+[![License](https://img.shields.io/github/license/nicotontige/NicoFy?color=D3BEAB)](LICENSE)
 
----
-
-<a href="https://ko-fi.com/gokadzev" target="_blank" title="ko-fi">
-  <img src="https://github.com/user-attachments/assets/1c204507-d124-4b34-878b-96c39c9bb3f8"  alt="ko-fi badge" style="width: 150px;">
+<a href="https://buymeacoffee.com/nicotontige" target="_blank" title="Buy me a coffee">
+  <img src="https://img.shields.io/badge/Buy%20me%20a%20coffee-nicotontige-FFDD00?logo=buymeacoffee&logoColor=black" alt="Buy me a coffee">
 </a>
 
+</div>
 
+NicoFy is a fork of [Musify](https://github.com/gokadzev/Musify) by Valeri
+Gokadze. It started from Musify 10.6.0 and now goes its own way, with its own
+releases, updates and features.
 
 ---
 
@@ -41,6 +39,10 @@ Built-in updater <br/>
 Built-in equalizer with presets <br/>
 21 supported languages <br/>
 Material UI & accent colors & dynamic colors (Android 12+) <br/>
+Android Auto and Android TV <br/>
+Queue kept across restarts <br/>
+Chapter navigation inside long compilations <br/>
+Scrobbling to Last.fm and ListenBrainz <br/>
 
 </center>
 
@@ -49,7 +51,7 @@ Material UI & accent colors & dynamic colors (Android 12+) <br/>
 
 ## Screenshots
 
-| ![Screenshot 1](https://raw.githubusercontent.com/gokadzev/Musify/master/fastlane/metadata/android/en-US/images/phoneScreenshots/01.jpg) | ![Screenshot 2](https://raw.githubusercontent.com/gokadzev/Musify/master/fastlane/metadata/android/en-US/images/phoneScreenshots/02.jpg) | ![Screenshot 3](https://raw.githubusercontent.com/gokadzev/Musify/master/fastlane/metadata/android/en-US/images/phoneScreenshots/03.jpg) | ![Screenshot 4](https://raw.githubusercontent.com/gokadzev/Musify/master/fastlane/metadata/android/en-US/images/phoneScreenshots/04.jpg) |
+| ![Screenshot 1](https://raw.githubusercontent.com/nicotontige/NicoFy/master/fastlane/metadata/android/en-US/images/phoneScreenshots/01.jpg) | ![Screenshot 2](https://raw.githubusercontent.com/nicotontige/NicoFy/master/fastlane/metadata/android/en-US/images/phoneScreenshots/02.jpg) | ![Screenshot 3](https://raw.githubusercontent.com/nicotontige/NicoFy/master/fastlane/metadata/android/en-US/images/phoneScreenshots/03.jpg) | ![Screenshot 4](https://raw.githubusercontent.com/nicotontige/NicoFy/master/fastlane/metadata/android/en-US/images/phoneScreenshots/04.jpg) |
 |----------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------|
 
 ---
@@ -59,7 +61,7 @@ Material UI & accent colors & dynamic colors (Android 12+) <br/>
 | Platform | Status | Dependencies |
 |----------|--------|--------------|
 | Android  | ✅ Supported | — |
-| Linux    | ✅  Supported (Beta) | Will be added soon... |
+| Linux    | ✅  Supported (Beta) | libmpv |
 | Windows    | ✅  Supported (Beta) | — |
 | IOS    | ❌ Unsupported | — |
 
@@ -67,65 +69,47 @@ Material UI & accent colors & dynamic colors (Android 12+) <br/>
 
 ## Download
 
-
-[<img src="https://github.com/gokadzev/Musify/raw/master/.github/assets/get-it-on-github.png" alt="Get it on Github" height="80">](https://github.com/gokadzev/Musify/releases/latest)
-[<img src="https://fdroid.gitlab.io/artwork/badge/get-it-on.png" alt="Get it on Fdroid" height="80">](https://f-droid.org/packages/com.gokadzev.musify.fdroid)
-
-
----
-
-## Contributors
-
-Special thanks to all contributors for their time and effort.
-
-<a href="https://github.com/gokadzev/Musify/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=gokadzev/Musify" alt="Contributors"/>
-</a>
-
+[<img src="https://github.com/nicotontige/NicoFy/raw/master/.github/assets/get-it-on-github.png" alt="Get it on Github" height="80">](https://github.com/nicotontige/NicoFy/releases/latest)
 
 ---
 
 ## Contribute
 
-Contributions are always welcome. Please read our [contributing guidelines](https://github.com/gokadzev/Musify/blob/master/CONTRIBUTING.md) before contributing.
-
----
-
-## F.A.Q
-
-You can see frequently asked questions and their answers [here](https://github.com/gokadzev/Musify/discussions/728).
+Contributions are welcome. Please read the [contributing guidelines](CONTRIBUTING.md) before contributing.
 
 ---
 
 ## Credits
 
-[Musify](https://github.com/Harsh-23/Musify) - Original inspiration for the concept and name. It is now completely reimplemented with new design and branding.
-
+- [Musify](https://github.com/gokadzev/Musify) by Valeri Gokadze and its
+  contributors: NicoFy is built on its code, under the same license.
+- [Musify](https://github.com/Harsh-23/Musify) by Harsh-23: the original
+  inspiration for Musify's concept and name.
 
 ---
 
 ## License
 
 ```
-Copyright © 2026 Valeri Gokadze
+Copyright © 2026 Valeri Gokadze (Musify)
+Copyright © 2026 Nicolas Manceau (NicoFy modifications)
 
-Musify is free software licensed under GPL v3.0. You may use, modify, and distribute
-this software freely, but must keep the source code open and publicly available, retain
-all copyright notices, disclose all changes made, and use the same GPL v3.0 license.
-
-Prohibited: Closed-source distributions or commercial redistribution of modified versions.
+NicoFy is free software licensed under GPL v3.0, as is Musify, which it is a
+modified version of. You may use, modify, and distribute this software freely,
+but must keep the source code open and publicly available, retain all copyright
+notices, disclose all changes made, and use the same GPL v3.0 license.
 ```
 
-See the [GNU General Public License](https://github.com/gokadzev/Musify/blob/master/LICENSE) for full details.
+See the [GNU General Public License](LICENSE) for full details.
 
 ---
 
 ## Disclaimer
 
 ```
-Musify and its contributors do not host, own, or distribute any copyrighted audio content.
+NicoFy and its contributors do not host, own, or distribute any copyrighted audio content.
 The app provides access to content through plugins and external sources. All trademarks, songs, audio files, and related content remain the property of their respective owners and are protected by applicable copyright laws.
 Included plugins are provided for interoperability and educational purposes only. Users are solely responsible for ensuring that their use of the app complies with local laws, copyright regulations, and the terms of service of the respective content providers.
-The developers of Musify do not encourage or endorse copyright infringement and assume no liability for misuse of the software or third-party plugins.
+The developers of NicoFy do not encourage or endorse copyright infringement and assume no liability for misuse of the software or third-party plugins.
 ```
 ---

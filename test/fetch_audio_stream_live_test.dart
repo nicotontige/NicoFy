@@ -3,9 +3,9 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:http/http.dart' as http;
-import 'package:musify/constants/clients.dart';
-import 'package:musify/services/common_services.dart';
-import 'package:musify/services/settings_manager.dart';
+import 'package:nicofy/constants/clients.dart';
+import 'package:nicofy/services/common_services.dart';
+import 'package:nicofy/services/settings_manager.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 
 // Live test: hits YouTube, which blocks GitHub Actions.
@@ -18,7 +18,7 @@ const _songId = 'dQw4w9WgXcQ';
 void main() {
   // No TestWidgetsFlutterBinding: it blocks real HTTP requests.
   setUpAll(() async {
-    Hive.init(Directory.systemTemp.createTempSync('musify_live').path);
+    Hive.init(Directory.systemTemp.createTempSync('nicofy_live').path);
     await Hive.openBox('settings');
     await Hive.openBox('cache');
     useProxy.value = false;

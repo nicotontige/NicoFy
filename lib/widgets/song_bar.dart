@@ -1,12 +1,12 @@
 /*
  *     Copyright (C) 2026 Valeri Gokadze
  *
- *     Musify is free software: you can redistribute it and/or modify
+ *     NicoFy is free software: you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
  *     the Free Software Foundation, either version 3 of the License, or
  *     (at your option) any later version.
  *
- *     Musify is distributed in the hope that it will be useful,
+ *     NicoFy is distributed in the hope that it will be useful,
  *     but WITHOUT ANY WARRANTY; without even the implied warranty of
  *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *     GNU General Public License for more details.
@@ -15,8 +15,10 @@
  *     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  *
  *
- *     For more information about Musify, including how to contribute,
- *     please visit: https://github.com/gokadzev/Musify
+ *     NicoFy is a modified version of Musify by Valeri Gokadze
+ *     (https://github.com/gokadzev/Musify).
+ *     For more information about NicoFy, please visit:
+ *     https://github.com/nicotontige/NicoFy
  */
 
 import 'dart:async';
@@ -27,20 +29,20 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:musify/extensions/l10n.dart';
-import 'package:musify/main.dart';
-import 'package:musify/services/common_services.dart';
-import 'package:musify/services/playlist_download_service.dart';
-import 'package:musify/services/playlists_manager.dart';
-import 'package:musify/services/router_service.dart';
-import 'package:musify/services/settings_manager.dart';
-import 'package:musify/utilities/flutter_toast.dart';
-import 'package:musify/utilities/formatter.dart';
-import 'package:musify/utilities/playlist_dialogs.dart';
-import 'package:musify/widgets/no_artwork_cube.dart';
-import 'package:musify/widgets/overflow_menu_button.dart';
-import 'package:musify/widgets/popup_menu_item.dart';
-import 'package:musify/widgets/rename_song_dialog.dart';
+import 'package:nicofy/extensions/l10n.dart';
+import 'package:nicofy/main.dart';
+import 'package:nicofy/services/common_services.dart';
+import 'package:nicofy/services/playlist_download_service.dart';
+import 'package:nicofy/services/playlists_manager.dart';
+import 'package:nicofy/services/router_service.dart';
+import 'package:nicofy/services/settings_manager.dart';
+import 'package:nicofy/utilities/flutter_toast.dart';
+import 'package:nicofy/utilities/formatter.dart';
+import 'package:nicofy/utilities/playlist_dialogs.dart';
+import 'package:nicofy/widgets/no_artwork_cube.dart';
+import 'package:nicofy/widgets/overflow_menu_button.dart';
+import 'package:nicofy/widgets/popup_menu_item.dart';
+import 'package:nicofy/widgets/rename_song_dialog.dart';
 
 List<PopupMenuEntry<String>> _buildSongMenuItems({
   required BuildContext context,

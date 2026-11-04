@@ -2,8 +2,8 @@ name: Desktop builds
 
 on:
   push:
-    branches:
-      - master
+    tags:
+      - '[0-9]+.[0-9]+.[0-9]+'
   workflow_dispatch:
 
 permissions:
@@ -11,17 +11,16 @@ permissions:
 
 jobs:
   build:
-    if: "github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, 'Update:')"
     strategy:
       fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
             platform: linux
-            artifact: build/musify-linux-x64.tar.gz
+            artifact: build/nicofy-linux-x64.tar.gz
           - os: windows-latest
             platform: windows
-            artifact: build/musify-windows-x64.zip
+            artifact: build/nicofy-windows-x64.zip
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v5
@@ -52,44 +51,43 @@ jobs:
         run: |
           if [[ "$RUNNER_OS" == "Linux" ]]; then
             pulseaudio --start --exit-idle-time=-1
-            pactl load-module module-null-sink sink_name=musify-test
-            export MUSIFY_TEST_LIBMPV=/usr/lib/x86_64-linux-gnu/libmpv.so.2
+            pactl load-module module-null-sink sink_name=nicofy-test
+            export NICOFY_TEST_LIBMPV=/usr/lib/x86_64-linux-gnu/libmpv.so.2
           else
-            export MUSIFY_TEST_LIBMPV="$(pwd)/build/windows/x64/runner/Release/libmpv-2.dll"
+            export NICOFY_TEST_LIBMPV="$(pwd)/build/windows/x64/runner/Release/libmpv-2.dll"
           fi
           flutter test test/desktop/audio_native_test.dart test/desktop/media_handler_native_test.dart
       - name: Check Linux startup
         if: runner.os == 'Linux'
-        run: dbus-run-session -- xvfb-run -a python .github/scripts/check_desktop_startup.py build/linux/x64/release/bundle/musify
+        run: dbus-run-session -- xvfb-run -a python .github/scripts/check_desktop_startup.py build/linux/x64/release/bundle/nicofy
       - name: Check Windows startup
         if: runner.os == 'Windows'
-        run: python .github/scripts/check_desktop_startup.py build/windows/x64/runner/Release/musify.exe
+        run: python .github/scripts/check_desktop_startup.py build/windows/x64/runner/Release/nicofy.exe
       - name: Check Windows icons
         if: runner.os == 'Windows'
-        run: python .github/scripts/check_windows_icons.py build/windows/x64/runner/Release/musify.exe
+        run: python .github/scripts/check_windows_icons.py build/windows/x64/runner/Release/nicofy.exe
       - name: Archive Linux bundle
         if: runner.os == 'Linux'
-        run: tar -czf build/musify-linux-x64.tar.gz -C build/linux/x64/release/bundle .
+        run: tar -czf build/nicofy-linux-x64.tar.gz -C build/linux/x64/release/bundle .
       - name: Archive Windows bundle
         if: runner.os == 'Windows'
-        run: Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath build/musify-windows-x64.zip
+        run: Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath build/nicofy-windows-x64.zip
       - name: Extract version
         id: extract_version
         shell: bash
         env:
-          COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
           REF_NAME: ${{ github.ref_name }}
+          REF_TYPE: ${{ github.ref_type }}
         run: |
-          version=$(echo "$COMMIT_MESSAGE" | grep -oP '(?<=Update: v)\d+\.\d+\.\d+' || true)
-          echo "version=${version:-$REF_NAME}" >> "$GITHUB_OUTPUT"
-          [[ -n "$version" ]] && echo "prerelease=false" >> "$GITHUB_OUTPUT" || echo "prerelease=true" >> "$GITHUB_OUTPUT"
+          echo "version=$REF_NAME" >> "$GITHUB_OUTPUT"
+          [[ "$REF_TYPE" == tag ]] && echo "prerelease=false" >> "$GITHUB_OUTPUT" || echo "prerelease=true" >> "$GITHUB_OUTPUT"
       - name: Release desktop bundle
         uses: svenstaro/upload-release-action@v2
         with:
-          repo_name: gokadzev/Musify
+          repo_name: nicotontige/NicoFy
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: ${{ matrix.artifact }}
-          asset_name: Musify-${{ matrix.platform }}-x64.${{ matrix.platform == 'linux' && 'tar.gz' || 'zip' }}
+          asset_name: NicoFy-${{ matrix.platform }}-x64.${{ matrix.platform == 'linux' && 'tar.gz' || 'zip' }}
           tag: ${{ steps.extract_version.outputs.version }}
           prerelease: ${{ steps.extract_version.outputs.prerelease }}
           overwrite: true

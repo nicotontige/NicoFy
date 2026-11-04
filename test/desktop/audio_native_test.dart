@@ -10,7 +10,7 @@ import 'package:media_kit/media_kit.dart';
 import '../support/audio_fixture.dart';
 
 void main() {
-  final library = Platform.environment['MUSIFY_TEST_LIBMPV'];
+  final library = Platform.environment['NICOFY_TEST_LIBMPV'];
   test(
     'native MPV loads nested clips repeatedly with headers and no disk cache errors',
     () async {
@@ -25,7 +25,7 @@ void main() {
       var authorized = 0;
       final serving = server.listen((request) async {
         requests++;
-        if (request.headers.value('X-Musify-Test') != 'required') {
+        if (request.headers.value('X-NicoFy-Test') != 'required') {
           request.response.statusCode = HttpStatus.forbidden;
           await request.response.close();
           return;
@@ -70,7 +70,7 @@ void main() {
             final uri = ProgressiveAudioSourceMessage(
               id: 'song$attempt',
               uri: 'http://127.0.0.1:${server.port}/audio.wav?attempt=$attempt',
-              headers: {'X-Musify-Test': 'required'},
+              headers: {'X-NicoFy-Test': 'required'},
             );
             final clips = [
               ClippingAudioSourceMessage(
@@ -128,7 +128,7 @@ void main() {
       expect(JustAudioMediaKit.diskCache, false);
     },
     skip: library == null
-        ? 'Set MUSIFY_TEST_LIBMPV to run the native backend regression'
+        ? 'Set NICOFY_TEST_LIBMPV to run the native backend regression'
         : false,
     timeout: const Timeout(Duration(seconds: 90)),
   );

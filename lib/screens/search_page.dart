@@ -1,12 +1,12 @@
 /*
  *     Copyright (C) 2026 Valeri Gokadze
  *
- *     Musify is free software: you can redistribute it and/or modify
+ *     NicoFy is free software: you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
  *     the Free Software Foundation, either version 3 of the License, or
  *     (at your option) any later version.
  *
- *     Musify is distributed in the hope that it will be useful,
+ *     NicoFy is distributed in the hope that it will be useful,
  *     but WITHOUT ANY WARRANTY; without even the implied warranty of
  *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *     GNU General Public License for more details.
@@ -15,8 +15,10 @@
  *     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  *
  *
- *     For more information about Musify, including how to contribute,
- *     please visit: https://github.com/gokadzev/Musify
+ *     NicoFy is a modified version of Musify by Valeri Gokadze
+ *     (https://github.com/gokadzev/Musify).
+ *     For more information about NicoFy, please visit:
+ *     https://github.com/nicotontige/NicoFy
  */
 
 import 'dart:async';
@@ -25,26 +27,26 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:musify/constants/app_constants.dart';
-import 'package:musify/database/radio_stations.db.dart';
-import 'package:musify/extensions/l10n.dart';
-import 'package:musify/main.dart';
-import 'package:musify/models/radio_model.dart';
-import 'package:musify/services/common_services.dart';
-import 'package:musify/services/data_manager.dart';
-import 'package:musify/services/playlists_manager.dart';
-import 'package:musify/services/router_service.dart';
-import 'package:musify/utilities/app_utils.dart';
-import 'package:musify/utilities/flutter_toast.dart';
-import 'package:musify/widgets/artist_bar.dart';
-import 'package:musify/widgets/confirmation_dialog.dart';
-import 'package:musify/widgets/custom_bar.dart';
-import 'package:musify/widgets/custom_search_bar.dart';
-import 'package:musify/widgets/mini_player_bottom_space.dart';
-import 'package:musify/widgets/playlist_bar.dart';
-import 'package:musify/widgets/radio_station_card.dart';
-import 'package:musify/widgets/song_bar.dart';
-import 'package:musify/widgets/sort_chips.dart';
+import 'package:nicofy/constants/app_constants.dart';
+import 'package:nicofy/database/radio_stations.db.dart';
+import 'package:nicofy/extensions/l10n.dart';
+import 'package:nicofy/main.dart';
+import 'package:nicofy/models/radio_model.dart';
+import 'package:nicofy/services/common_services.dart';
+import 'package:nicofy/services/data_manager.dart';
+import 'package:nicofy/services/playlists_manager.dart';
+import 'package:nicofy/services/router_service.dart';
+import 'package:nicofy/utilities/app_utils.dart';
+import 'package:nicofy/utilities/flutter_toast.dart';
+import 'package:nicofy/widgets/artist_bar.dart';
+import 'package:nicofy/widgets/confirmation_dialog.dart';
+import 'package:nicofy/widgets/custom_bar.dart';
+import 'package:nicofy/widgets/custom_search_bar.dart';
+import 'package:nicofy/widgets/mini_player_bottom_space.dart';
+import 'package:nicofy/widgets/playlist_bar.dart';
+import 'package:nicofy/widgets/radio_station_card.dart';
+import 'package:nicofy/widgets/song_bar.dart';
+import 'package:nicofy/widgets/sort_chips.dart';
 
 /// The result categories the search page can show, in the order their tabs
 /// appear.

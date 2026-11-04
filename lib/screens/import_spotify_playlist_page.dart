@@ -4,14 +4,14 @@ import 'package:file_picker/file_picker.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/services.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:musify/extensions/l10n.dart';
-import 'package:musify/main.dart' show logger;
-import 'package:musify/services/artist_service.dart' show ytMusicClient;
-import 'package:musify/services/playlists_manager.dart';
-import 'package:musify/utilities/flutter_toast.dart';
-import 'package:musify/utilities/formatter.dart';
-import 'package:musify/utilities/url_launcher.dart';
-import 'package:musify/widgets/mini_player.dart';
+import 'package:nicofy/extensions/l10n.dart';
+import 'package:nicofy/main.dart' show logger;
+import 'package:nicofy/services/artist_service.dart' show ytMusicClient;
+import 'package:nicofy/services/playlists_manager.dart';
+import 'package:nicofy/utilities/flutter_toast.dart';
+import 'package:nicofy/utilities/formatter.dart';
+import 'package:nicofy/utilities/url_launcher.dart';
+import 'package:nicofy/widgets/mini_player.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 
 /// A CSV row and its original position, used to preserve playlist order.

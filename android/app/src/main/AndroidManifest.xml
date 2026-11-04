@@ -1,6 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    package="com.gokadzev.musify">
+    package="com.nicotontige.nicofy">
 
 
     <!-- Permissions -->
@@ -34,7 +34,7 @@
     </queries>
 
     <application
-        android:label="Musify"
+        android:label="NicoFy"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:banner="@drawable/tv_banner"
@@ -75,7 +75,7 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data
-                    android:scheme="musify"
+                    android:scheme="nicofy"
                     android:host="playlist"
                     android:pathPattern="/custom/.*" />
             </intent-filter>

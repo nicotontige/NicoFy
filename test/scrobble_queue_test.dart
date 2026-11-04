@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:musify/models/scrobble.dart';
-import 'package:musify/services/scrobble_queue.dart';
+import 'package:nicofy/models/scrobble.dart';
+import 'package:nicofy/services/scrobble_queue.dart';
 
 /// The offline queue is what makes scrobbling usable in a car: listens have to
 /// survive a dead connection and be offered again later, without hammering the

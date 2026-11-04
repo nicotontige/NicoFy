@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:musify/widgets/song_selection_controller.dart';
+import 'package:nicofy/widgets/song_selection_controller.dart';
 
 Map _song(String ytid) => {'ytid': ytid, 'title': 'Song $ytid'};
 

@@ -5,7 +5,7 @@ import 'package:audio_service/audio_service.dart';
 import 'package:dbus/dbus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:musify/services/linux_media_controls.dart';
+import 'package:nicofy/services/linux_media_controls.dart';
 
 class _NavigationChanges extends ChangeNotifier {
   bool get observed => hasListeners;
@@ -62,7 +62,7 @@ void main() {
 
   group('Linux media controls', () {
     setUp(() async {
-      directory = await Directory.systemTemp.createTemp('musify_mpris');
+      directory = await Directory.systemTemp.createTemp('nicofy_mpris');
       server = DBusServer();
       final address = await server.listenAddress(
         DBusAddress.unix(dir: directory),
@@ -84,7 +84,7 @@ void main() {
         resolveArtwork: (source) => resolveArtwork(source),
         position: () => handler.sought ?? const Duration(seconds: 10),
         bus: DBusClient(address),
-        name: 'org.mpris.MediaPlayer2.musify.test',
+        name: 'org.mpris.MediaPlayer2.nicofy.test',
         volume: () => currentVolume,
         volumeStream: volumes.stream,
         setVolume: (value) async {
@@ -136,15 +136,15 @@ void main() {
     });
 
     test(
-      'exports Musify identity, artwork, valid track ID and playback state',
+      'exports NicoFy identity, artwork, valid track ID and playback state',
       () async {
         expect(
           (await remote.getProperty(root, 'DesktopEntry')).asString(),
-          'musify',
+          'nicofy',
         );
         expect(
           (await remote.getProperty(root, 'Identity')).asString(),
-          'Musify',
+          'NicoFy',
         );
         expect((await property('PlaybackStatus')).asString(), 'Playing');
         final metadata = (await property('Metadata')).asStringVariantDict();

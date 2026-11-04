@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:musify/services/playback_failure_recovery.dart';
-import 'package:musify/utilities/app_utils.dart';
+import 'package:nicofy/services/playback_failure_recovery.dart';
+import 'package:nicofy/utilities/app_utils.dart';
 
 /// A song YouTube refuses to hand over — anything marked made for children,
 /// among others — used to take the whole session down with it: the queue index

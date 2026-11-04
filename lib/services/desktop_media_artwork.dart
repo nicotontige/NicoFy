@@ -86,7 +86,7 @@ class DesktopMediaArtwork {
   Future<Uri?> _resolve(Uri source, String key) async {
     try {
       final root = await _directory();
-      final directory = await Directory('${root.path}/musify-media-artwork')
+      final directory = await Directory('${root.path}/nicofy-media-artwork')
           .create(recursive: true);
       final file = File('${directory.path}/$key.png');
       if (!await file.exists()) {

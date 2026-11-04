@@ -1,12 +1,12 @@
 /*
  *     Copyright (C) 2026 Valeri Gokadze
  *
- *     Musify is free software: you can redistribute it and/or modify
+ *     NicoFy is free software: you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
  *     the Free Software Foundation, either version 3 of the License, or
  *     (at your option) any later version.
  *
- *     Musify is distributed in the hope that it will be useful,
+ *     NicoFy is distributed in the hope that it will be useful,
  *     but WITHOUT ANY WARRANTY; without even the implied warranty of
  *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *     GNU General Public License for more details.
@@ -15,8 +15,10 @@
  *     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  *
  *
- *     For more information about Musify, including how to contribute,
- *     please visit: https://github.com/gokadzev/Musify
+ *     NicoFy is a modified version of Musify by Valeri Gokadze
+ *     (https://github.com/gokadzev/Musify).
+ *     For more information about NicoFy, please visit:
+ *     https://github.com/nicotontige/NicoFy
  */
 
 import 'dart:async';
@@ -30,32 +32,32 @@ import 'package:flutter/services.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:just_audio_media_kit/just_audio_media_kit.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:musify/extensions/l10n.dart';
-import 'package:musify/localization/app_localizations.dart';
-import 'package:musify/services/audio_service.dart';
-import 'package:musify/services/data_manager.dart';
-import 'package:musify/services/desktop_media_artwork.dart';
-import 'package:musify/services/io_service.dart';
-import 'package:musify/services/linux_media_controls.dart';
-import 'package:musify/services/listening_stats_service.dart';
-import 'package:musify/services/logger_service.dart';
-import 'package:musify/services/playlist_sharing.dart';
-import 'package:musify/services/playlists_manager.dart';
-import 'package:musify/services/router_service.dart';
-import 'package:musify/services/settings_manager.dart';
-import 'package:musify/services/stream_buffer_service.dart';
-import 'package:musify/services/update_manager.dart';
-import 'package:musify/services/windows_media_controls.dart';
-import 'package:musify/theme/app_themes.dart';
-import 'package:musify/utilities/flutter_toast.dart';
-import 'package:musify/utilities/language_utils.dart';
-import 'package:musify/utilities/platform_utils.dart';
-import 'package:musify/utilities/playlist_utils.dart';
-import 'package:musify/utilities/sharing_intent.dart';
+import 'package:nicofy/extensions/l10n.dart';
+import 'package:nicofy/localization/app_localizations.dart';
+import 'package:nicofy/services/audio_service.dart';
+import 'package:nicofy/services/data_manager.dart';
+import 'package:nicofy/services/desktop_media_artwork.dart';
+import 'package:nicofy/services/io_service.dart';
+import 'package:nicofy/services/linux_media_controls.dart';
+import 'package:nicofy/services/listening_stats_service.dart';
+import 'package:nicofy/services/logger_service.dart';
+import 'package:nicofy/services/playlist_sharing.dart';
+import 'package:nicofy/services/playlists_manager.dart';
+import 'package:nicofy/services/router_service.dart';
+import 'package:nicofy/services/settings_manager.dart';
+import 'package:nicofy/services/stream_buffer_service.dart';
+import 'package:nicofy/services/update_manager.dart';
+import 'package:nicofy/services/windows_media_controls.dart';
+import 'package:nicofy/theme/app_themes.dart';
+import 'package:nicofy/utilities/flutter_toast.dart';
+import 'package:nicofy/utilities/language_utils.dart';
+import 'package:nicofy/utilities/platform_utils.dart';
+import 'package:nicofy/utilities/playlist_utils.dart';
+import 'package:nicofy/utilities/sharing_intent.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 
-late MusifyAudioHandler audioHandler;
+late NicoFyAudioHandler audioHandler;
 LinuxMediaControls? linuxMediaControls;
 WindowsMediaControls? windowsMediaControls;
 StreamSubscription<String?>? sharingIntentSubscription;
@@ -67,8 +69,8 @@ final appLinks = AppLinks();
 bool isFdroidBuild = false;
 bool isUpdateChecked = false;
 
-class Musify extends StatefulWidget {
-  const Musify({super.key});
+class NicoFy extends StatefulWidget {
+  const NicoFy({super.key});
 
   static Future<void> updateAppState(
     BuildContext context, {
@@ -77,7 +79,7 @@ class Musify extends StatefulWidget {
     Color? newAccentColor,
     bool? useSystemColor,
   }) async {
-    context.findAncestorStateOfType<_MusifyState>()!.changeSettings(
+    context.findAncestorStateOfType<_NicoFyState>()!.changeSettings(
       newThemeMode: newThemeMode,
       newLocale: newLocale,
       newAccentColor: newAccentColor,
@@ -86,10 +88,10 @@ class Musify extends StatefulWidget {
   }
 
   @override
-  _MusifyState createState() => _MusifyState();
+  _NicoFyState createState() => _NicoFyState();
 }
 
-class _MusifyState extends State<Musify> with WidgetsBindingObserver {
+class _NicoFyState extends State<NicoFy> with WidgetsBindingObserver {
   void changeSettings({
     ThemeMode? newThemeMode,
     Locale? newLocale,
@@ -289,7 +291,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initialisation();
 
-  runApp(const Musify());
+  runApp(const NicoFy());
 }
 
 Future<void> initialisation() async {
@@ -305,10 +307,10 @@ Future<void> initialisation() async {
 
     if (isMobilePlatform) {
       audioHandler = await AudioService.init(
-        builder: MusifyAudioHandler.new,
+        builder: NicoFyAudioHandler.new,
         config: const AudioServiceConfig(
-          androidNotificationChannelId: 'com.gokadzev.musify',
-          androidNotificationChannelName: 'Musify',
+          androidNotificationChannelId: 'com.nicotontige.nicofy',
+          androidNotificationChannelName: 'NicoFy',
           androidNotificationIcon: 'drawable/ic_launcher_foreground',
           androidShowNotificationBadge: true,
           androidStopForegroundOnPause: false,
@@ -327,9 +329,9 @@ Future<void> initialisation() async {
       );
     } else {
       // Use the desktop audio backend without mobile service plugins.
-      JustAudioMediaKit.title = 'Musify';
+      JustAudioMediaKit.title = 'NicoFy';
       JustAudioMediaKit.ensureInitialized();
-      audioHandler = MusifyAudioHandler();
+      audioHandler = NicoFyAudioHandler();
     }
 
     if (!kIsWeb && defaultTargetPlatform == TargetPlatform.windows) {
@@ -383,7 +385,7 @@ Future<void> initialisation() async {
         ]),
         canGoPrevious: () => audioHandler.hasPrevious,
         raise: () =>
-            const MethodChannel('musify/window').invokeMethod<void>('raise'),
+            const MethodChannel('nicofy/window').invokeMethod<void>('raise'),
         position: () => audioHandler.currentPositionData.position,
         onError: (error, stackTrace) => logger.log(
           'Linux media controls error',
@@ -432,7 +434,7 @@ Future<void> initialisation() async {
 }
 
 void handleIncomingLink(Uri? uri) async {
-  if (uri == null || uri.scheme != 'musify' || uri.host != 'playlist') return;
+  if (uri == null || uri.scheme != 'nicofy' || uri.host != 'playlist') return;
 
   if (uri.pathSegments.length < 2 || uri.pathSegments[0] != 'custom') return;
 

@@ -4,18 +4,18 @@ import 'package:audio_service/audio_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive/hive.dart';
-import 'package:musify/main.dart' show logger;
-import 'package:musify/services/audio_service.dart';
-import 'package:musify/services/settings_manager.dart';
+import 'package:nicofy/main.dart' show logger;
+import 'package:nicofy/services/audio_service.dart';
+import 'package:nicofy/services/settings_manager.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   late Directory directory;
-  late MusifyAudioHandler handler;
+  late NicoFyAudioHandler handler;
   late int logCount;
 
   setUpAll(() async {
-    directory = await Directory.systemTemp.createTemp('musify_navigation');
+    directory = await Directory.systemTemp.createTemp('nicofy_navigation');
     Hive.init(directory.path);
     for (final name in ['settings', 'user', 'userNoBackup', 'cache']) {
       await Hive.openBox(name);
@@ -28,7 +28,7 @@ void main() {
     offlineMode.value = false;
     repeatNotifier.value = AudioServiceRepeatMode.none;
     logCount = logger.getLogCount();
-    handler = MusifyAudioHandler();
+    handler = NicoFyAudioHandler();
     await Future<void>.delayed(const Duration(milliseconds: 250));
   });
 
@@ -83,10 +83,13 @@ void main() {
     expect(handler.hasPrevious, false);
   });
 
-  test('paused auto picker cannot advance an exhausted queue', () async {
+  // Next on an exhausted queue fetches the song the auto picker would have
+  // played, even while paused (gokadzev/Musify#952); only offline mode, where
+  // nothing can be fetched, leaves it with nowhere to go.
+  test('auto picker advances an exhausted queue unless offline', () async {
     await handler.addPlaylistToQueue([song('first')]);
     playNextSongAutomatically.value = true;
-    expect(handler.canSkipToNext, false);
+    expect(handler.canSkipToNext, true);
     offlineMode.value = true;
     expect(handler.canSkipToNext, false);
     await handler.addPlaylistToQueue([song('second')]);

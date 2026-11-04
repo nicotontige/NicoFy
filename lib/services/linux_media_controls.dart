@@ -5,7 +5,7 @@ import 'dart:io';
 import 'package:audio_service/audio_service.dart';
 import 'package:dbus/dbus.dart';
 import 'package:flutter/foundation.dart';
-import 'package:musify/services/desktop_media_artwork.dart';
+import 'package:nicofy/services/desktop_media_artwork.dart';
 
 /// Exposes the existing audio handler to Linux desktops and media keys.
 class LinuxMediaControls extends DBusObject {
@@ -26,7 +26,7 @@ class LinuxMediaControls extends DBusObject {
     DBusClient? bus,
     String? name,
   }) : _bus = bus ?? DBusClient.session(),
-       name = name ?? 'org.mpris.MediaPlayer2.musify.instance$pid',
+       name = name ?? 'org.mpris.MediaPlayer2.nicofy.instance$pid',
        super(DBusObjectPath('/org/mpris/MediaPlayer2'));
 
   static const rootInterface = 'org.mpris.MediaPlayer2';
@@ -117,8 +117,8 @@ class LinuxMediaControls extends DBusObject {
     'CanQuit': const DBusBoolean(false),
     'CanRaise': DBusBoolean(raise != null),
     'HasTrackList': const DBusBoolean(false),
-    'Identity': const DBusString('Musify'),
-    'DesktopEntry': const DBusString('musify'),
+    'Identity': const DBusString('NicoFy'),
+    'DesktopEntry': const DBusString('nicofy'),
     'SupportedUriSchemes': DBusArray.string([]),
     'SupportedMimeTypes': DBusArray.string([]),
   };

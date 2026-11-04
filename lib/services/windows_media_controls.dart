@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
-import 'package:musify/services/desktop_media_artwork.dart';
+import 'package:nicofy/services/desktop_media_artwork.dart';
 
 /// Exposes the audio handler through the Windows runner's SMTC session.
 class WindowsMediaControls {
@@ -13,7 +13,7 @@ class WindowsMediaControls {
     required this.canGoPrevious,
     this.navigationChanges,
     this.resolveArtwork,
-    this.channel = const MethodChannel('musify/media_controls'),
+    this.channel = const MethodChannel('nicofy/media_controls'),
   });
 
   final void Function(Object error, StackTrace stackTrace) onError;

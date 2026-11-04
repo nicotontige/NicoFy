@@ -1,12 +1,12 @@
 /*
  *     Copyright (C) 2026 Valeri Gokadze
  *
- *     Musify is free software: you can redistribute it and/or modify
+ *     NicoFy is free software: you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
  *     the Free Software Foundation, either version 3 of the License, or
  *     (at your option) any later version.
  *
- *     Musify is distributed in the hope that it will be useful,
+ *     NicoFy is distributed in the hope that it will be useful,
  *     but WITHOUT ANY WARRANTY; without even the implied warranty of
  *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *     GNU General Public License for more details.
@@ -15,39 +15,41 @@
  *     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  *
  *
- *     For more information about Musify, including how to contribute,
- *     please visit: https://github.com/gokadzev/Musify
+ *     NicoFy is a modified version of Musify by Valeri Gokadze
+ *     (https://github.com/gokadzev/Musify).
+ *     For more information about NicoFy, please visit:
+ *     https://github.com/nicotontige/NicoFy
  */
 
 import 'package:audio_service/audio_service.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:musify/constants/app_constants.dart';
-import 'package:musify/extensions/l10n.dart';
-import 'package:musify/main.dart';
-import 'package:musify/screens/search_page.dart';
-import 'package:musify/services/common_services.dart';
-import 'package:musify/services/data_manager.dart';
-import 'package:musify/services/listening_stats_service.dart';
-import 'package:musify/services/playlist_download_service.dart';
-import 'package:musify/services/playlists_manager.dart';
-import 'package:musify/services/router_service.dart';
-import 'package:musify/services/settings_manager.dart';
-import 'package:musify/services/update_manager.dart';
-import 'package:musify/theme/app_colors.dart';
-import 'package:musify/theme/app_themes.dart';
-import 'package:musify/utilities/flutter_bottom_sheet.dart';
-import 'package:musify/utilities/flutter_toast.dart';
-import 'package:musify/utilities/language_utils.dart';
-import 'package:musify/utilities/platform_utils.dart';
-import 'package:musify/utilities/url_launcher.dart';
-import 'package:musify/widgets/bottom_sheet_bar.dart';
-import 'package:musify/widgets/confirmation_dialog.dart';
-import 'package:musify/widgets/custom_bar.dart';
-import 'package:musify/widgets/mini_player_bottom_space.dart';
-import 'package:musify/widgets/section_header.dart';
-import 'package:musify/widgets/shapes/four_sided_cookie_shape.dart';
+import 'package:nicofy/constants/app_constants.dart';
+import 'package:nicofy/extensions/l10n.dart';
+import 'package:nicofy/main.dart';
+import 'package:nicofy/screens/search_page.dart';
+import 'package:nicofy/services/common_services.dart';
+import 'package:nicofy/services/data_manager.dart';
+import 'package:nicofy/services/listening_stats_service.dart';
+import 'package:nicofy/services/playlist_download_service.dart';
+import 'package:nicofy/services/playlists_manager.dart';
+import 'package:nicofy/services/router_service.dart';
+import 'package:nicofy/services/settings_manager.dart';
+import 'package:nicofy/services/update_manager.dart';
+import 'package:nicofy/theme/app_colors.dart';
+import 'package:nicofy/theme/app_themes.dart';
+import 'package:nicofy/utilities/flutter_bottom_sheet.dart';
+import 'package:nicofy/utilities/flutter_toast.dart';
+import 'package:nicofy/utilities/language_utils.dart';
+import 'package:nicofy/utilities/platform_utils.dart';
+import 'package:nicofy/utilities/url_launcher.dart';
+import 'package:nicofy/widgets/bottom_sheet_bar.dart';
+import 'package:nicofy/widgets/confirmation_dialog.dart';
+import 'package:nicofy/widgets/custom_bar.dart';
+import 'package:nicofy/widgets/mini_player_bottom_space.dart';
+import 'package:nicofy/widgets/section_header.dart';
+import 'package:nicofy/widgets/shapes/four_sided_cookie_shape.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -446,7 +448,7 @@ class SettingsPage extends StatelessWidget {
                 themeMode = getThemeMode(themeModeSetting);
                 brightness = getBrightnessFromThemeMode(themeMode);
                 if (context.mounted) {
-                  await Musify.updateAppState(
+                  await NicoFy.updateAppState(
                     context,
                     newThemeMode: themeMode,
                     newLocale: languageSetting,
@@ -505,7 +507,8 @@ class SettingsPage extends StatelessWidget {
             borderRadius: BorderRadius.circular(16),
           ),
           child: InkWell(
-            onTap: () => launchURL(Uri.parse('https://ko-fi.com/gokadzev')),
+            onTap: () =>
+                launchURL(Uri.parse('https://buymeacoffee.com/nicotontige')),
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
               child: Row(
@@ -553,13 +556,6 @@ class SettingsPage extends StatelessWidget {
           FluentIcons.document_24_regular,
           borderRadius: commonCustomBarRadiusFirst,
           onTap: () => NavigationManager.router.go('/settings/license'),
-        ),
-        CustomBar(
-          context.l10n!.translate,
-          FluentIcons.translate_24_regular,
-          description: context.l10n!.translateDescription,
-          onTap: () =>
-              launchURL(Uri.parse('https://crowdin.com/project/musify')),
         ),
         ValueListenableBuilder<int>(
           valueListenable: logger.logCount,
@@ -678,7 +674,7 @@ class SettingsPage extends StatelessWidget {
 
   void _selectAccentColor(BuildContext context, Color color) {
     addOrUpdateData<int>('settings', 'accentColor', color.toARGB32());
-    Musify.updateAppState(
+    NicoFy.updateAppState(
       context,
       newAccentColor: color,
       useSystemColor: false,
@@ -710,7 +706,7 @@ class SettingsPage extends StatelessWidget {
         modeNames[index],
         () {
           addOrUpdateData<int>('settings', 'themeIndex', mode.index);
-          Musify.updateAppState(context, newThemeMode: mode);
+          NicoFy.updateAppState(context, newThemeMode: mode);
           Navigator.of(context, rootNavigator: isDesktopPlatform).pop();
         },
         themeMode == mode,
@@ -762,7 +758,7 @@ class SettingsPage extends StatelessWidget {
 
       return BottomSheetBar(getLanguageDisplayName(context, language), () {
         addOrUpdateData<String>('settings', 'languageCode', newLocaleFullCode);
-        Musify.updateAppState(context, newLocale: newLocale);
+        NicoFy.updateAppState(context, newLocale: newLocale);
         showToast(context, context.l10n!.languageMsg);
         Navigator.of(context, rootNavigator: isDesktopPlatform).pop();
       }, activeLanguageFullCode == newLocaleFullCode);
@@ -885,7 +881,7 @@ class SettingsPage extends StatelessWidget {
   void _toggleSystemColor(BuildContext context, bool value) {
     addOrUpdateData<bool>('settings', 'useSystemColor', value);
     useSystemColor.value = value;
-    Musify.updateAppState(
+    NicoFy.updateAppState(
       context,
       newAccentColor: primaryColorSetting,
       useSystemColor: value,
@@ -896,7 +892,7 @@ class SettingsPage extends StatelessWidget {
   void _togglePureBlack(BuildContext context, bool value) {
     addOrUpdateData<bool>('settings', 'usePureBlackColor', value);
     usePureBlackColor.value = value;
-    Musify.updateAppState(context);
+    NicoFy.updateAppState(context);
     showToast(context, context.l10n!.settingChangedMsg);
   }
 

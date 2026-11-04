@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive/hive.dart';
-import 'package:musify/services/queue_persistence_service.dart';
+import 'package:nicofy/services/queue_persistence_service.dart';
 
 /// Covers gokadzev/Musify#894: the queue and the point playback reached in it
 /// have to survive the app being closed.
@@ -15,7 +15,7 @@ void main() {
   ];
 
   setUpAll(() async {
-    dir = await Directory.systemTemp.createTemp('musify_queue_test');
+    dir = await Directory.systemTemp.createTemp('nicofy_queue_test');
     Hive.init(dir.path);
     await Hive.openBox(QueuePersistenceService.storageCategory);
   });

@@ -7,18 +7,18 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:hive/hive.dart';
 import 'package:just_audio_media_kit/just_audio_media_kit.dart';
 import 'package:media_kit/media_kit.dart';
-import 'package:musify/services/audio_service.dart';
-import 'package:musify/services/linux_media_controls.dart';
-import 'package:musify/services/settings_manager.dart';
+import 'package:nicofy/services/audio_service.dart';
+import 'package:nicofy/services/linux_media_controls.dart';
+import 'package:nicofy/services/settings_manager.dart';
 
 import '../support/audio_fixture.dart';
 
 void main() {
-  final library = Platform.environment['MUSIFY_TEST_LIBMPV'];
+  final library = Platform.environment['NICOFY_TEST_LIBMPV'];
   TestWidgetsFlutterBinding.ensureInitialized();
   late Directory directory;
   late File wav;
-  late MusifyAudioHandler handler;
+  late NicoFyAudioHandler handler;
   LinuxMediaControls? controls;
   DBusServer? bus;
   DBusClient? observer;
@@ -75,7 +75,7 @@ void main() {
         NativePlayer.test = true;
         JustAudioMediaKit.ensureInitialized(libmpv: library);
         directory = await Directory.systemTemp.createTemp(
-          'musify_native_handler',
+          'nicofy_native_handler',
         );
         Hive.init(directory.path);
         for (final name in ['settings', 'user', 'userNoBackup', 'cache']) {
@@ -96,7 +96,7 @@ void main() {
         offlineMode.value = true;
         playNextSongAutomatically.value = false;
         repeatNotifier.value = AudioServiceRepeatMode.none;
-        handler = MusifyAudioHandler();
+        handler = NicoFyAudioHandler();
         await handler.setVolume(0);
         errors = [];
         if (Platform.isLinux) {
@@ -114,7 +114,7 @@ void main() {
               playWhenReady: handler.shouldContinuePlayback,
             ),
             bus: DBusClient(address),
-            name: 'org.mpris.MediaPlayer2.musify.native',
+            name: 'org.mpris.MediaPlayer2.nicofy.native',
             volume: () => handler.volume,
             volumeStream: handler.volumeStream,
             setVolume: handler.setVolume,
@@ -253,7 +253,7 @@ void main() {
       }, skip: library == null || !Platform.isLinux);
     },
     skip: library == null
-        ? 'Set MUSIFY_TEST_LIBMPV to test the real desktop handler'
+        ? 'Set NICOFY_TEST_LIBMPV to test the real desktop handler'
         : false,
   );
 }

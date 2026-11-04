@@ -2,9 +2,9 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive/hive.dart';
-import 'package:musify/services/listening_stats_service.dart';
-import 'package:musify/services/scrobbling_service.dart';
-import 'package:musify/services/settings_manager.dart';
+import 'package:nicofy/services/listening_stats_service.dart';
+import 'package:nicofy/services/scrobbling_service.dart';
+import 'package:nicofy/services/settings_manager.dart';
 
 /// Scrobbling hangs off the listening session, not off the audio handler, and
 /// it has to work even when the local listening stats are turned off.
@@ -13,7 +13,7 @@ void main() {
   const song = {'ytid': 'aaa', 'title': 'One More Time', 'artist': 'Daft Punk'};
 
   setUpAll(() async {
-    dir = await Directory.systemTemp.createTemp('musify_scrobble_test');
+    dir = await Directory.systemTemp.createTemp('nicofy_scrobble_test');
     Hive.init(dir.path);
     await Hive.openBox('settings');
     await Hive.openBox('user');

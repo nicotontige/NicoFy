@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:musify/models/scrobble.dart';
+import 'package:nicofy/models/scrobble.dart';
 
 void main() {
   final playedAt = DateTime.fromMillisecondsSinceEpoch(1700000000000);

@@ -1,12 +1,12 @@
 /*
  *     Copyright (C) 2026 Valeri Gokadze
  *
- *     Musify is free software: you can redistribute it and/or modify
+ *     NicoFy is free software: you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
  *     the Free Software Foundation, either version 3 of the License, or
  *     (at your option) any later version.
  *
- *     Musify is distributed in the hope that it will be useful,
+ *     NicoFy is distributed in the hope that it will be useful,
  *     but WITHOUT ANY WARRANTY; without even the implied warranty of
  *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *     GNU General Public License for more details.
@@ -15,14 +15,16 @@
  *     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  *
  *
- *     For more information about Musify, including how to contribute,
- *     please visit: https://github.com/gokadzev/Musify
+ *     NicoFy is a modified version of Musify by Valeri Gokadze
+ *     (https://github.com/gokadzev/Musify).
+ *     For more information about NicoFy, please visit:
+ *     https://github.com/nicotontige/NicoFy
  */
 
 import 'package:intl/intl.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:musify/constants/app_constants.dart';
-import 'package:musify/services/settings_manager.dart';
+import 'package:nicofy/constants/app_constants.dart';
+import 'package:nicofy/services/settings_manager.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 
 BorderRadius getItemBorderRadius(
@@ -97,7 +99,8 @@ final RegExp _youtubePlaylistIdRegExp = RegExp('[&?]list=([a-zA-Z0-9_-]+)');
 
 bool isSponsorshipAnnouncementUrl(String url) {
   final host = Uri.tryParse(url)?.host.toLowerCase();
-  return host != null && (host == 'ko-fi.com' || host.endsWith('.ko-fi.com'));
+  return host != null &&
+      (host == 'buymeacoffee.com' || host.endsWith('.buymeacoffee.com'));
 }
 
 /// Formats a [monthKey] (e.g. "2026-06") into a locale-aware month label
@@ -163,7 +166,9 @@ AudioStreamInfo? selectAudioStreamForQuality(
 List<AudioStreamInfo> _filterCompatibleAudioSources(
   List<AudioStreamInfo> sources,
 ) {
-  return sources.where((stream) => _audioCompatibilityScore(stream) >= 2).toList();
+  return sources
+      .where((stream) => _audioCompatibilityScore(stream) >= 2)
+      .toList();
 }
 
 int _audioCompatibilityScore(AudioStreamInfo stream) {

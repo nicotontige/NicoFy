@@ -3,9 +3,9 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive/hive.dart';
 import 'package:just_audio/just_audio.dart';
-import 'package:musify/services/listening_stats_service.dart';
-import 'package:musify/services/settings_manager.dart';
-import 'package:musify/utilities/listening_stats_utils.dart';
+import 'package:nicofy/services/listening_stats_service.dart';
+import 'package:nicofy/services/settings_manager.dart';
+import 'package:nicofy/utilities/listening_stats_utils.dart';
 
 /// Regression test for gokadzev/Musify#953: after the last song in the queue
 /// completes, just_audio keeps `playing == true`, and the resulting
@@ -16,7 +16,7 @@ void main() {
   final song = {'ytid': 'aaa', 'title': 'A', 'artist': 'x', 'duration': 5};
 
   setUpAll(() async {
-    dir = await Directory.systemTemp.createTemp('musify_stats_test');
+    dir = await Directory.systemTemp.createTemp('nicofy_stats_test');
     Hive.init(dir.path);
     await Hive.openBox('settings');
     await Hive.openBox('user');

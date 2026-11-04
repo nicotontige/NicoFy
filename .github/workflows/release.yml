@@ -1,9 +1,15 @@
+name: Build and release apk
+
+# A release is cut by pushing a tag named after the version in pubspec.yaml,
+# e.g. `git tag 1.0.0 && git push origin 1.0.0`. The desktop workflow runs on
+# the same tag and adds its bundles to the same release.
 on:
   push:
-    branches:
-      - master
+    tags:
+      - '[0-9]+.[0-9]+.[0-9]+'
 
-name: Test, Build and Release apk
+permissions:
+  contents: write
 
 env:
   PROPERTIES_PATH: './android/key.properties'
@@ -11,28 +17,31 @@ env:
 jobs:
   build:
     name: Build APK
-    if: "contains(github.event.head_commit.message, 'Update:')"
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
 
-      # Extract version from commit message
-      - name: Extract version
-        id: extract_version
+      - name: Check the tag matches pubspec.yaml
+        id: version
         run: |
-          version=$(echo ${{ github.event.head_commit.message }} | grep -oP '(?<=Update: v)\d+\.\d+\.\d+')
-          echo "version=${version}" >> $GITHUB_OUTPUT
+          version="${GITHUB_REF_NAME}"
+          pubspec=$(grep -oP '^version: \K[0-9]+\.[0-9]+\.[0-9]+' pubspec.yaml)
+          build=$(grep -oP '^version: [0-9.]+\+\K[0-9]+' pubspec.yaml)
+          if [[ "$version" != "$pubspec" ]]; then
+            echo "Tag $version does not match pubspec.yaml version $pubspec" >&2
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "build=$build" >> "$GITHUB_OUTPUT"
 
-      # Setup Java environment in order to build the Android app.
       - name: Set up Java
         uses: actions/setup-java@v5
         with:
           distribution: 'zulu'
           java-version: '17.x'
 
-      # Gradle cache for faster builds
       - name: Cache Gradle dependencies
         uses: actions/cache@v5
         with:
@@ -43,7 +52,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-gradle-
 
-      # Setup the Flutter environment.
       - run: |
           pip install -U yq
           echo "FLUTTER_VERSION=$(yq -r .environment.flutter pubspec.yaml | sed 's/\^//g')" >> $GITHUB_ENV
@@ -52,54 +60,67 @@ jobs:
           channel: 'stable'
           flutter-version: "${{ env.FLUTTER_VERSION }}"
 
-      #
-      - run: |
-          echo keyPassword=\${{ secrets.KEY_STORE }} > ${{env.PROPERTIES_PATH}}
-          echo storePassword=\${{ secrets.KEY_PASSWORD }} >> ${{env.PROPERTIES_PATH}}
-          echo keyAlias=\${{ secrets.KEY_ALIAS }} >> ${{env.PROPERTIES_PATH}}
-      #
-      - run: echo "${{ secrets.KEYSTORE2 }}" | base64 --decode > android/app/key.jks
+      # The release keystore, kept in the repository secrets.
+      - name: Restore signing key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 --decode > android/app/key.jks
+          {
+            echo "storePassword=$KEYSTORE_PASSWORD"
+            echo "keyAlias=$KEY_ALIAS"
+            echo "keyPassword=$KEY_PASSWORD"
+          } > "$PROPERTIES_PATH"
 
-      # Get Flutter dependencies.
       - name: Get Flutter dependencies
         run: flutter pub get
 
-      # # Check for any formatting issues in the code.
-      # - name: Check code formatting
-      #   run: dart format --set-exit-if-changed .
-
-      # Statically analyze the Dart code for any errors.
       - name: Analyze Dart code
         run: flutter analyze .
 
-      # Build arm64 APK for GitHub release
       - name: Build arm64 APK
         run: flutter build apk --release --split-per-abi --target-platform="android-arm64" --flavor github
 
-      # Release arm64 generated APK
-      - name: Release arm64 APK
-        uses: svenstaro/upload-release-action@v2
-        with:
-          repo_name: gokadzev/Musify
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: build/app/outputs/flutter-apk/app-arm64-v8a-github-release.apk
-          asset_name: Musify-arm64-v8a.apk
-          tag: ${{ steps.extract_version.outputs.version }}
-          prerelease: false
-          overwrite: true
-
-      # Build universal APK
       - name: Build universal APK
         run: flutter build apk --release --flavor github
 
-      # Release universal generated APK
-      - name: Release universal APK
-        uses: svenstaro/upload-release-action@v2
-        with:
-          repo_name: gokadzev/Musify
-          repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: build/app/outputs/flutter-apk/app-github-release.apk
-          asset_name: Musify.apk
-          tag: ${{ steps.extract_version.outputs.version }}
-          prerelease: false
-          overwrite: true
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          version="${{ steps.version.outputs.version }}"
+          notes="fastlane/metadata/android/en-US/changelogs/${{ steps.version.outputs.build }}.txt"
+          [[ -f "$notes" ]] || { echo "NicoFy $version" > release-notes.md; notes=release-notes.md; }
+          cp build/app/outputs/flutter-apk/app-arm64-v8a-github-release.apk NicoFy-arm64-v8a.apk
+          cp build/app/outputs/flutter-apk/app-github-release.apk NicoFy.apk
+          # The desktop workflow may have created the release first.
+          if gh release view "$version" > /dev/null 2>&1; then
+            gh release edit "$version" --title "NicoFy $version" --notes-file "$notes" --prerelease=false
+            gh release upload "$version" NicoFy.apk NicoFy-arm64-v8a.apk --clobber
+          else
+            gh release create "$version" NicoFy.apk NicoFy-arm64-v8a.apk \
+              --title "NicoFy $version" --notes-file "$notes"
+          fi
+
+      # The app reads check.json on the `update` branch to learn that a new
+      # version exists. An announcement URL already set there is kept.
+      - name: Point update checks at this release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          version="${{ steps.version.outputs.version }}"
+          base="https://github.com/${GITHUB_REPOSITORY}/releases/download/${version}"
+          announcement=$(curl -fsSL "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/update/check.json" | jq -c '.announcementurl' 2>/dev/null || true)
+          mkdir update-branch && cd update-branch
+          git init -q -b update
+          jq -n --arg v "$version" --arg u "$base/NicoFy.apk" --arg a "$base/NicoFy-arm64-v8a.apk" \
+            --argjson ann "${announcement:-null}" \
+            '{version: $v, url: $u, arm64url: $a, announcementurl: $ann}' > check.json
+          git add check.json
+          git -c user.name='github-actions[bot]' \
+              -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+              commit -qm "Update: v${version}"
+          git push -f "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" update

@@ -5,7 +5,7 @@ import 'dart:ui' as ui;
 
 import 'package:crypto/crypto.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:musify/services/desktop_media_artwork.dart';
+import 'package:nicofy/services/desktop_media_artwork.dart';
 
 Future<List<int>> _stripedImage(int width, int height) async {
   final recorder = ui.PictureRecorder();
@@ -28,7 +28,7 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   late Directory directory;
   setUp(() async {
-    directory = await Directory.systemTemp.createTemp('musify_media_artwork');
+    directory = await Directory.systemTemp.createTemp('nicofy_media_artwork');
   });
   tearDown(() async {
     await directory.delete(recursive: true);
@@ -168,7 +168,7 @@ void main() {
   });
 
   test('pruning bounds total bytes as well as file count', () async {
-    final folder = await Directory('${directory.path}/musify-media-artwork')
+    final folder = await Directory('${directory.path}/nicofy-media-artwork')
         .create();
     for (var i = 0; i < 3; i++) {
       final name = sha256.convert(utf8.encode('large-$i'));

@@ -1,11 +1,11 @@
-name: musify
+name: nicofy
 description: Music Streaming app made in Flutter!
-homepage: https://github.com/gokadzev/Musify
-repository: https://github.com/gokadzev/Musify
-issue_tracker: https://github.com/gokadzev/Musify/issues
+homepage: https://github.com/nicotontige/NicoFy
+repository: https://github.com/nicotontige/NicoFy
+issue_tracker: https://github.com/nicotontige/NicoFy/issues
 
 publish_to: 'none'
-version: 10.6.0+186 # run update.sh after changing the version
+version: 1.0.0+187 # run update.sh after changing the version
 
 environment:
   sdk: '>=3.13.0 <4.0.0'
@@ -63,7 +63,7 @@ flutter:
   # To add assets to your application, add an assets section, like this:
   assets:
     - assets/licenses/
-    - assets/icons/musify_icon.png
+    - assets/icons/nicofy_icon.png
     - assets/icons/ic_launcher.png
 
   fonts:

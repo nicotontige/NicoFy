@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:musify/models/song_chapter.dart';
-import 'package:musify/utilities/chapter_parser.dart';
+import 'package:nicofy/models/song_chapter.dart';
+import 'package:nicofy/utilities/chapter_parser.dart';
 
 void main() {
   const hour = Duration(hours: 1);

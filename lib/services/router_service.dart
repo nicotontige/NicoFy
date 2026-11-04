@@ -1,12 +1,12 @@
 /*
  *     Copyright (C) 2026 Valeri Gokadze
  *
- *     Musify is free software: you can redistribute it and/or modify
+ *     NicoFy is free software: you can redistribute it and/or modify
  *     it under the terms of the GNU General Public License as published by
  *     the Free Software Foundation, either version 3 of the License, or
  *     (at your option) any later version.
  *
- *     Musify is distributed in the hope that it will be useful,
+ *     NicoFy is distributed in the hope that it will be useful,
  *     but WITHOUT ANY WARRANTY; without even the implied warranty of
  *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *     GNU General Public License for more details.
@@ -15,34 +15,36 @@
  *     along with this program.  If not, see <https://www.gnu.org/licenses/>.
  *
  *
- *     For more information about Musify, including how to contribute,
- *     please visit: https://github.com/gokadzev/Musify
+ *     NicoFy is a modified version of Musify by Valeri Gokadze
+ *     (https://github.com/gokadzev/Musify).
+ *     For more information about NicoFy, please visit:
+ *     https://github.com/nicotontige/NicoFy
  */
 
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
-import 'package:musify/constants/version.dart';
-import 'package:musify/screens/about_page.dart';
-import 'package:musify/screens/artist_page.dart';
-import 'package:musify/screens/auto_song_picker_page.dart';
-import 'package:musify/screens/bottom_navigation_page.dart';
-import 'package:musify/screens/equalizer_page.dart';
-import 'package:musify/screens/home_page.dart';
-import 'package:musify/screens/import_spotify_playlist_page.dart';
-import 'package:musify/screens/library_page.dart';
-import 'package:musify/screens/playlist_folder_page.dart';
-import 'package:musify/screens/playlist_page.dart';
-import 'package:musify/screens/radio_stations_page.dart';
-import 'package:musify/screens/scrobbling_page.dart';
-import 'package:musify/screens/search_page.dart';
-import 'package:musify/screens/settings_page.dart';
-import 'package:musify/screens/time_machine_page.dart';
-import 'package:musify/screens/user_songs_page.dart';
-import 'package:musify/services/playlist_download_service.dart';
-import 'package:musify/services/settings_manager.dart';
-import 'package:musify/widgets/offline_search_placeholder.dart';
+import 'package:nicofy/constants/version.dart';
+import 'package:nicofy/screens/about_page.dart';
+import 'package:nicofy/screens/artist_page.dart';
+import 'package:nicofy/screens/auto_song_picker_page.dart';
+import 'package:nicofy/screens/bottom_navigation_page.dart';
+import 'package:nicofy/screens/equalizer_page.dart';
+import 'package:nicofy/screens/home_page.dart';
+import 'package:nicofy/screens/import_spotify_playlist_page.dart';
+import 'package:nicofy/screens/library_page.dart';
+import 'package:nicofy/screens/playlist_folder_page.dart';
+import 'package:nicofy/screens/playlist_page.dart';
+import 'package:nicofy/screens/radio_stations_page.dart';
+import 'package:nicofy/screens/scrobbling_page.dart';
+import 'package:nicofy/screens/search_page.dart';
+import 'package:nicofy/screens/settings_page.dart';
+import 'package:nicofy/screens/time_machine_page.dart';
+import 'package:nicofy/screens/user_songs_page.dart';
+import 'package:nicofy/services/playlist_download_service.dart';
+import 'package:nicofy/services/settings_manager.dart';
+import 'package:nicofy/widgets/offline_search_placeholder.dart';
 
 class NavigationManager {
   factory NavigationManager() {
@@ -271,7 +273,7 @@ class NavigationManager {
                 path: 'license',
                 pageBuilder: (context, state) => _pushPage(
                   child: const LicensePage(
-                    applicationName: 'Musify',
+                    applicationName: 'NicoFy',
                     applicationVersion: appVersion,
                   ),
                   state: state,
