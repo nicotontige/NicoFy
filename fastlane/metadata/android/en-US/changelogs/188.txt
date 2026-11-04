@@ -1,0 +1,2 @@
+- Lyrics: songs with an apostrophe in their title (m'aimes, l'amour, don't...) are found on paroles.net again
+- Linux bundle is built again
