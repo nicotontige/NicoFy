@@ -115,11 +115,17 @@ String foldDiacritics(String input) {
   return buffer.toString();
 }
 
+final RegExp _apostrophes = RegExp("['\u2018\u2019\u02BC`]");
+
 /// `The Weeknd` -> `the-weeknd`. Returns an empty string when nothing ASCII
 /// remains (e.g. Arabic or Japanese titles); callers must skip slug based
 /// scrapers in that case instead of requesting a broken URL.
+///
+/// Apostrophes become dashes, as paroles.net spells them:
+/// `Pour que tu m'aimes encore` -> `pour-que-tu-m-aimes-encore`.
 String lyricsSlug(String input) {
-  var s = foldDiacritics(input).replaceAll(RegExp(r'\s+'), '-');
+  var s = foldDiacritics(input).replaceAll(_apostrophes, ' ');
+  s = s.replaceAll(RegExp(r'\s+'), '-');
   s = s.replaceAll(RegExp('[^a-z0-9-]'), '');
   s = s.replaceAll(RegExp('-+'), '-');
   s = s.replaceAll(RegExp(r'^-+|-+$'), '');
