@@ -22,7 +22,7 @@
  */
 
 import 'package:audio_service/audio_service.dart';
-import 'package:hive_flutter/hive_flutter.dart';
+import 'package:hive_ce/hive_ce.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:nicofy/screens/playlist_page.dart';
 import 'package:nicofy/screens/user_songs_page.dart';
@@ -151,6 +151,18 @@ final repeatNotifier = ValueNotifier<AudioServiceRepeatMode>(
       .get('repeatMode', defaultValue: 0)],
 );
 
+final localSyncEnabled = ValueNotifier<bool>(
+  Hive.box('settings').get('localSyncEnabled', defaultValue: false),
+);
+
+final localSyncAutomatic = ValueNotifier<bool>(
+  Hive.box('settings').get('localSyncAutomatic', defaultValue: true),
+);
+
+final localSyncLastSyncedAt = ValueNotifier<DateTime?>(
+  _readDateTimeSetting('localSyncLastSyncedAt'),
+);
+
 // Non-storage notifiers
 
 var sleepTimerNotifier = ValueNotifier<Duration?>(null);
@@ -158,6 +170,9 @@ var sleepTimerNotifier = ValueNotifier<Duration?>(null);
 // Server-Notifiers
 
 final announcementURL = ValueNotifier<String?>(null);
+
+DateTime? _readDateTimeSetting(String key) =>
+    DateTime.tryParse(Hive.box('settings').get(key)?.toString() ?? '');
 
 void reloadSettingsFromStorage() {
   final settings = Hive.box('settings');
@@ -264,4 +279,15 @@ void reloadSettingsFromStorage() {
       restoredRepeatIndex < AudioServiceRepeatMode.values.length) {
     repeatNotifier.value = AudioServiceRepeatMode.values[restoredRepeatIndex];
   }
+
+  localSyncEnabled.value = settings.get(
+    'localSyncEnabled',
+    defaultValue: false,
+  );
+  localSyncAutomatic.value = settings.get(
+    'localSyncAutomatic',
+    defaultValue: true,
+  );
+
+  localSyncLastSyncedAt.value = _readDateTimeSetting('localSyncLastSyncedAt');
 }

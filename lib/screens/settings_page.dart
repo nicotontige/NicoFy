@@ -28,10 +28,12 @@ import 'package:material_ui/material_ui.dart';
 import 'package:nicofy/constants/app_constants.dart';
 import 'package:nicofy/extensions/l10n.dart';
 import 'package:nicofy/main.dart';
+import 'package:nicofy/screens/local_sync_page.dart';
 import 'package:nicofy/screens/search_page.dart';
 import 'package:nicofy/services/common_services.dart';
 import 'package:nicofy/services/data_manager.dart';
 import 'package:nicofy/services/listening_stats_service.dart';
+import 'package:nicofy/services/local_sync_service.dart';
 import 'package:nicofy/services/playlist_download_service.dart';
 import 'package:nicofy/services/playlists_manager.dart';
 import 'package:nicofy/services/router_service.dart';
@@ -69,6 +71,7 @@ class SettingsPage extends StatelessWidget {
           inactivatedColor,
         ),
         if (!offlineMode.value) _buildOnlineFeaturesSection(context),
+        const LocalSyncSettingsSection(),
         _buildOthersSection(context),
         const SizedBox(height: 20),
         const MiniPlayerBottomSpace(),
@@ -359,7 +362,7 @@ class SettingsPage extends StatelessWidget {
             confirmationMessage: context.l10n!.clearSearchHistoryQuestion,
             onSubmit: () {
               searchHistoryNotifier.value = [];
-              deleteData('user', 'searchHistory');
+              addOrUpdateData('user', 'searchHistory', <dynamic>[]);
               showToast(context, '${context.l10n!.searchHistoryMsg}!');
             },
           ),
@@ -372,7 +375,7 @@ class SettingsPage extends StatelessWidget {
             confirmationMessage: context.l10n!.clearRecentlyPlayedQuestion,
             onSubmit: () {
               userRecentlyPlayed.value = [];
-              deleteData('user', 'recentlyPlayedSongs');
+              addOrUpdateData('user', 'recentlyPlayedSongs', <dynamic>[]);
               showToast(context, '${context.l10n!.recentlyPlayedMsg}!');
             },
           ),
@@ -431,8 +434,14 @@ class SettingsPage extends StatelessWidget {
           context.l10n!.restoreUserData,
           FluentIcons.cloud_add_24_regular,
           onTap: () async {
+            var storageChanged = false;
             try {
-              final result = await restoreData(context);
+              await LocalSyncService.instance.pauseForStorageRestore();
+              if (!context.mounted) return;
+              final result = await restoreData(
+                context,
+                onStorageChanged: (changed) => storageChanged = changed,
+              );
               if (result.success) {
                 reloadSettingsFromStorage();
                 reloadSongLibraryStateFromStorage();
@@ -476,6 +485,10 @@ class SettingsPage extends StatelessWidget {
                   icon: FluentIcons.error_circle_24_regular,
                 );
               }
+            } finally {
+              await LocalSyncService.instance.resumeAfterStorageRestore(
+                storageChanged: storageChanged,
+              );
             }
           },
         ),

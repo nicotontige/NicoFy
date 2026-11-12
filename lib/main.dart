@@ -29,17 +29,19 @@ import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
-import 'package:hive_flutter/hive_flutter.dart';
+import 'package:hive_ce_flutter/hive_flutter.dart';
 import 'package:just_audio_media_kit/just_audio_media_kit.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:nicofy/extensions/l10n.dart';
 import 'package:nicofy/localization/app_localizations.dart';
+import 'package:nicofy/screens/local_sync_page.dart';
 import 'package:nicofy/services/audio_service.dart';
 import 'package:nicofy/services/data_manager.dart';
 import 'package:nicofy/services/desktop_media_artwork.dart';
 import 'package:nicofy/services/io_service.dart';
 import 'package:nicofy/services/linux_media_controls.dart';
 import 'package:nicofy/services/listening_stats_service.dart';
+import 'package:nicofy/services/local_sync_service.dart';
 import 'package:nicofy/services/logger_service.dart';
 import 'package:nicofy/services/playlist_sharing.dart';
 import 'package:nicofy/services/playlists_manager.dart';
@@ -143,6 +145,9 @@ class _NicoFyState extends State<NicoFy> with WidgetsBindingObserver {
     };
 
     offlineMode.addListener(_onOfflineModeChanged);
+    LocalSyncService.instance.incomingPairingRequest.addListener(
+      showIncomingPairingDialog,
+    );
 
     if (isMobilePlatform) {
       sharingIntentSubscription = ReceiveSharingIntent.getTextStream().listen(
@@ -209,6 +214,9 @@ class _NicoFyState extends State<NicoFy> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      unawaited(LocalSyncService.instance.syncOnResume());
+    }
     super.didChangeAppLifecycleState(state);
     // Persist listening stats and the playing queue when the app leaves the
     // foreground. This is the reliable moment to snapshot and flush: unlike
@@ -232,6 +240,10 @@ class _NicoFyState extends State<NicoFy> with WidgetsBindingObserver {
     offlineMode.removeListener(_onOfflineModeChanged);
     PlatformDispatcher.instance.onPlatformBrightnessChanged = null;
 
+    LocalSyncService.instance.incomingPairingRequest.removeListener(
+      showIncomingPairingDialog,
+    );
+    unawaited(LocalSyncService.instance.dispose());
     unawaited(linuxMediaControls?.dispose());
     unawaited(windowsMediaControls?.dispose());
     Hive.close();
@@ -304,6 +316,19 @@ Future<void> initialisation() async {
       Hive.openBox('userNoBackup'),
       Hive.openBox('cache'),
     ]);
+
+    // Nothing else removes cache entries nobody asks for again.
+    unawaited(cleanupOldCacheEntries());
+
+    try {
+      await LocalSyncService.instance.initialise();
+    } catch (e, stackTrace) {
+      logger.log(
+        'Local sync could not start',
+        error: e,
+        stackTrace: stackTrace,
+      );
+    }
 
     if (isMobilePlatform) {
       audioHandler = await AudioService.init(

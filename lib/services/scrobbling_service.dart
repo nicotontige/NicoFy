@@ -23,7 +23,7 @@
 
 import 'dart:async';
 
-import 'package:hive/hive.dart';
+import 'package:hive_ce/hive_ce.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:nicofy/main.dart' show logger;
 import 'package:nicofy/models/scrobble.dart';

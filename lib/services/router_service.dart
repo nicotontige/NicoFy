@@ -34,6 +34,7 @@ import 'package:nicofy/screens/equalizer_page.dart';
 import 'package:nicofy/screens/home_page.dart';
 import 'package:nicofy/screens/import_spotify_playlist_page.dart';
 import 'package:nicofy/screens/library_page.dart';
+import 'package:nicofy/screens/local_sync_page.dart';
 import 'package:nicofy/screens/playlist_folder_page.dart';
 import 'package:nicofy/screens/playlist_page.dart';
 import 'package:nicofy/screens/radio_stations_page.dart';
@@ -305,6 +306,11 @@ class NavigationManager {
                   child: const ImportSpotifyPlaylistPage(),
                   state: state,
                 ),
+              ),
+              GoRoute(
+                path: 'local-sync',
+                pageBuilder: (context, state) =>
+                    _pushPage(child: const LocalSyncPage(), state: state),
               ),
             ],
           ),

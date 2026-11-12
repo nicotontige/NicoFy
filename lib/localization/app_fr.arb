@@ -272,8 +272,171 @@
   "spotifyPlaylistProgress": "Recherche {done} sur {total}",
   "suggestedArtists": "Artistes recommandés",
   "suggestedPlaylists": "Playlists recommandées",
-  "syncedLyrics": "Synced lyrics",
-  "syncedLyricsDescription": "Highlight the current line and scroll along with the song when timed lyrics are available.",
+  "syncAllNow": "Synchroniser maintenant",
+  "syncAllNowDescription": "{count, plural, =1{Avec l'appareil associé en ligne} other{Avec les {count} appareils associés en ligne}}",
+  "syncNow": "Synchroniser",
+  "syncOnline": "{address} · En ligne",
+  "syncSyncedAll": "Synchronisé avec vos appareils",
+  "syncThisDevice": "Cet appareil",
+  "syncTitle": "Synchro locale",
+  "syncData": "Choisir quoi synchroniser",
+  "syncSelections": "Seules les catégories cochées sur les deux appareils sont échangées. Les réglages et les fichiers téléchargés restent sur chaque appareil.",
+  "syncFavourites": "Titres aimés",
+  "syncPlaylists": "Playlists, dossiers et épingles",
+  "syncRecent": "Écoutés récemment",
+  "syncRecap": "Bilan d'écoute",
+  "syncSearches": "Historique de recherche",
+  "syncRadio": "Radios aimées",
+  "syncPairTitle": "Associer cet appareil ?",
+  "syncPinInstructions": "Saisissez le code à six chiffres affiché sur l'autre appareil.",
+  "syncPairDescription": "{device} veut s'associer. Tapez ce code là-bas ; annulez si ce n'est pas vous qui l'avez demandé.",
+  "syncUnchanged": "Aucune donnée sélectionnée n'a changé.",
+  "syncOverNetwork": "Synchroniser sur le réseau local",
+  "syncOffDescription": "Synchronisez votre bibliothèque et votre bilan d'écoute entre vos appareils en Wi-Fi. Sans compte ni serveur dans le cloud.",
+  "syncDevices": "Appareils",
+  "syncFindDevices": "Trouver les appareils de ce réseau et les associer.",
+  "syncLastSynced": "Dernière synchro : {time}",
+  "syncAutomatic": "Synchro automatique",
+  "syncAutomaticDescription": "Avec les appareils associés en ligne : au démarrage, peu après un changement et toutes les 30 minutes.",
+  "syncCouldNotStart": "Impossible de démarrer la synchro locale",
+  "syncIsOff": "Activez la synchro locale pour rendre cet appareil visible par vos autres appareils NicoFy sur le même réseau.",
+  "syncVisible": "Cet appareil est visible par vos autres appareils NicoFy sur le même réseau.",
+  "syncNotVisible": "Invisible pour l'instant : la synchro locale n'a pas pu démarrer.",
+  "syncScanAgain": "Rechercher à nouveau",
+  "syncScanning": "Recherche d'appareils sur votre réseau...",
+  "syncConnecting": "Connexion...",
+  "syncPreparing": "Préparation de votre bibliothèque...",
+  "syncSending": "Envoi vers l'autre appareil...",
+  "syncMerging": "Fusion des données reçues...",
+  "syncSyncingWith": "Synchro avec {device}",
+  "syncSyncedWith": "Synchronisé avec {device}",
+  "syncPairWith": "Associer {device}",
+  "syncPairedWith": "Associé à {device}",
+  "syncPair": "Associer",
+  "syncDone": "Terminé",
+  "syncOfflineDevice": "Hors ligne",
+  "syncNoDevices": "Aucun autre appareil NicoFy trouvé. Activez la synchro locale sur l'autre appareil et vérifiez que les deux sont sur le même Wi-Fi.",
+  "syncForget": "Oublier",
+  "syncForgetConfirm": "Oublier {device} ? Il faudra le réassocier avec un code avant de synchroniser.",
+  "syncForgetAll": "Oublier tous les appareils",
+  "syncForgetAllConfirm": "Oublier tous les appareils associés ? Chacun redemandera un code.",
+  "syncErrorNotRunning": "Activez d'abord la synchro locale sur cet appareil.",
+  "syncErrorIncorrectPin": "Code incorrect. Vérifiez le code affiché sur {device}.",
+  "syncErrorRejected": "{device} a refusé l'association.",
+  "syncErrorBusy": "{device} est occupé par une autre association. Patientez quelques secondes et réessayez.",
+  "syncErrorUntrusted": "{device} ne fait plus confiance à cet appareil. Oubliez-le dans la liste, puis associez-le à nouveau.",
+  "syncErrorUpdate": "Mettez NicoFy à jour sur les deux appareils pour utiliser la synchro locale.",
+  "syncErrorNoCategories": "Choisissez au moins une catégorie activée sur les deux appareils.",
+  "syncErrorTooLarge": "Les données choisies sont trop volumineuses. Choisissez moins de catégories.",
+  "syncErrorUnreachable": "Impossible de joindre {device}. Vos données ne risquent rien ; vérifiez que les deux appareils sont sur le même réseau.",
+  "syncErrorFailed": "La synchro avec {device} a échoué. Réessayez.",
+  "@syncAllNowDescription": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@syncOnline": {
+    "placeholders": {
+      "address": {
+        "type": "String"
+      }
+    }
+  },
+  "@syncPairDescription": {
+    "placeholders": {
+      "device": {
+        "type": "String"
+      }
+    }
+  },
+  "@syncLastSynced": {
+    "placeholders": {
+      "time": {
+        "type": "String"
+      }
+    }
+  },
+  "@syncSyncingWith": {
+    "placeholders": {
+      "device": {
+        "type": "String"
+      }
+    }
+  },
+  "@syncSyncedWith": {
+    "placeholders": {
+      "device": {
+        "type": "String"
+      }
+    }
+  },
+  "@syncPairWith": {
+    "placeholders": {
+      "device": {
+        "type": "String"
+      }
+    }
+  },
+  "@syncPairedWith": {
+    "placeholders": {
+      "device": {
+        "type": "String"
+      }
+    }
+  },
+  "@syncForgetConfirm": {
+    "placeholders": {
+      "device": {
+        "type": "String"
+      }
+    }
+  },
+  "@syncErrorIncorrectPin": {
+    "placeholders": {
+      "device": {
+        "type": "String"
+      }
+    }
+  },
+  "@syncErrorRejected": {
+    "placeholders": {
+      "device": {
+        "type": "String"
+      }
+    }
+  },
+  "@syncErrorBusy": {
+    "placeholders": {
+      "device": {
+        "type": "String"
+      }
+    }
+  },
+  "@syncErrorUntrusted": {
+    "placeholders": {
+      "device": {
+        "type": "String"
+      }
+    }
+  },
+  "@syncErrorUnreachable": {
+    "placeholders": {
+      "device": {
+        "type": "String"
+      }
+    }
+  },
+  "@syncErrorFailed": {
+    "placeholders": {
+      "device": {
+        "type": "String"
+      }
+    }
+  },
+  "syncedLyrics": "Paroles synchronisées",
+  "syncedLyricsDescription": "Mettez en surbrillance la ligne actuelle et faites défiler le texte au rythme de la chanson lorsque les paroles synchronisées sont disponibles.",
   "tapToView": "Appuyez pour afficher",
   "themeMode": "Mode de thème",
   "themeModeDark": "Sombre",

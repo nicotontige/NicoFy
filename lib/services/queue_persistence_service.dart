@@ -23,7 +23,7 @@
 
 import 'dart:async';
 
-import 'package:hive/hive.dart';
+import 'package:hive_ce/hive_ce.dart';
 import 'package:nicofy/main.dart' show logger;
 import 'package:nicofy/services/data_manager.dart';
 import 'package:nicofy/utilities/map_utils.dart';

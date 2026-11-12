@@ -27,7 +27,7 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:flutter/widgets.dart';
-import 'package:hive/hive.dart';
+import 'package:hive_ce/hive_ce.dart';
 import 'package:http/http.dart' as http;
 import 'package:nicofy/constants/clients.dart';
 import 'package:nicofy/main.dart' show logger;
@@ -88,6 +88,9 @@ String? lastFetchedLyrics;
 
 void reloadSongLibraryStateFromStorage() {
   final userBox = Hive.box('user');
+  userLikedRadioStations.value = List<String>.from(
+    userBox.get('likedRadioStations', defaultValue: []),
+  );
   userLikedSongsList.value = List.from(
     userBox.get('likedSongs', defaultValue: []),
   );
@@ -868,21 +871,6 @@ Future<Lyrics?> getSongLyricsResult(
     lastFetchedLyrics = key;
   }
   return result;
-}
-
-Future<String?> getSongLyrics(
-  String? artist,
-  String title, {
-  Duration? duration,
-  String? album,
-}) async {
-  final result = await getSongLyricsResult(
-    artist,
-    title,
-    duration: duration,
-    album: album,
-  );
-  return result == null ? null : formatPlainLyrics(result);
 }
 
 Future<bool> makeSongOffline(dynamic song) async {

@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hive/hive.dart';
+import 'package:hive_ce/hive_ce.dart';
 import 'package:nicofy/services/queue_persistence_service.dart';
 
 /// Covers gokadzev/Musify#894: the queue and the point playback reached in it

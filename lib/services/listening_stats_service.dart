@@ -23,10 +23,11 @@
 
 import 'dart:async';
 
-import 'package:hive/hive.dart';
+import 'package:hive_ce/hive_ce.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:nicofy/main.dart' show logger;
 import 'package:nicofy/services/data_manager.dart';
+import 'package:nicofy/services/local_sync/sync_security.dart';
 import 'package:nicofy/services/scrobbling_service.dart';
 import 'package:nicofy/services/settings_manager.dart';
 import 'package:nicofy/utilities/listening_stats_utils.dart';
@@ -36,6 +37,10 @@ import 'package:nicofy/utilities/scrobble_rules.dart';
 final listeningStatsService = ListeningStatsService();
 
 class ListeningStatsService {
+  ListeningStatsService({DateTime Function()? now})
+    : _now = now ?? DateTime.now;
+
+  final DateTime Function() _now;
   static const storageKey = 'wrappedListeningStats';
 
   Map<String, dynamic>? _stats;
@@ -44,6 +49,9 @@ class ListeningStatsService {
   // instead of on a periodic timer. This keeps device I/O off the hot path
   // during continuous playback.
   bool _dirty = false;
+
+  /// Whether listening progress is still waiting to be written.
+  bool get hasPendingChanges => _dirty;
   Duration _listeningTimeRemainder = Duration.zero;
 
   // Playback-session bookkeeping stays here so the audio handler can focus on
@@ -69,7 +77,7 @@ class ListeningStatsService {
       wrappedEnabled.value || scrobbleReporter.isActive;
 
   bool get hasStats {
-    final now = DateTime.now();
+    final now = _now();
     final stats = _readStats(now);
     final history = stats['history'] as Map<String, dynamic>;
     return hasDisplayableListeningStats(_asMap(stats['currentMonth'])) ||
@@ -81,21 +89,21 @@ class ListeningStatsService {
   }
 
   bool get isAnnualRecapAvailable {
-    final now = DateTime.now();
+    final now = _now();
     if (!isListeningStatsAnnualWindow(now)) return false;
 
     return hasDisplayableAnnualListeningStats(_readStats(now), now);
   }
 
-  int get year => listeningStatsAnnualYear(DateTime.now());
+  int get year => listeningStatsAnnualYear(_now());
 
   int get yearTotalSeconds {
-    final now = DateTime.now();
+    final now = _now();
     return annualTotalSecondsFromStats(_readStats(now), now);
   }
 
   List<String> get availableMonthKeys {
-    final now = DateTime.now();
+    final now = _now();
     return visibleListeningStatsMonthKeys(_readStats(now), now);
   }
 
@@ -123,7 +131,7 @@ class ListeningStatsService {
   List<Map<String, dynamic>> yearTopSongs({
     int limit = wrappedAnnualSongsLimit,
   }) {
-    final now = DateTime.now();
+    final now = _now();
     final months = annualListeningMonthsFromStats(_readStats(now), now);
     return annualListeningSongsFromMonths(months, limit: limit);
   }
@@ -137,7 +145,7 @@ class ListeningStatsService {
     if (wholeSeconds <= 0) return;
     _listeningTimeRemainder -= Duration(seconds: wholeSeconds);
 
-    final now = listenedAt ?? DateTime.now();
+    final now = listenedAt ?? _now();
     _stats = applyListeningTimeDelta(
       _readStats(now),
       listenedDuration: Duration(seconds: wholeSeconds),
@@ -155,7 +163,7 @@ class ListeningStatsService {
   }) {
     if (!wrappedEnabled.value) return;
 
-    final now = listenedAt ?? DateTime.now();
+    final now = listenedAt ?? _now();
     _stats = applyListeningStatsDelta(
       _readStats(now),
       song: song,
@@ -182,6 +190,7 @@ class ListeningStatsService {
     Map song, {
     Duration? duration,
     DateTime? startedAt,
+    bool isPlaying = true,
   }) {
     if (!_sessionTrackingEnabled) return;
 
@@ -194,11 +203,9 @@ class ListeningStatsService {
     _sessionListened = Duration.zero;
     _sessionQualified = false;
     _sessionScrobbled = false;
-    _sessionLastTick = startedAt ?? DateTime.now();
+    _sessionLastTick = startedAt ?? _now();
     _sessionStartedAt = _sessionLastTick;
-    // A session is started only once playback has begun, so mark it playing now;
-    // otherwise ticks before the next playerState transition would be dropped.
-    _sessionLastAudioPlayerPlaying = true;
+    _sessionLastAudioPlayerPlaying = isPlaying;
 
     scrobbleReporter.reportNowPlaying(song, duration: _sessionDuration);
   }
@@ -213,17 +220,12 @@ class ListeningStatsService {
     if (ytid == null || ytid.isEmpty) return;
 
     if (_sessionSongId != ytid) {
-      // Reached from handlePlayerStateForListeningStats before
-      // _sessionLastAudioPlayerPlaying is updated, so the flag still holds the
-      // pre-transition value (false). We just got a "playing" event for a
-      // different song, meaning the previous one was playing up to this tick;
-      // pass wasPlaying: true explicitly so its final tick isn't dropped.
-      finishListeningSession(countCurrentTick: true, wasPlaying: true);
+      finishListeningSession(countCurrentTick: true);
       startListeningSession(song);
       return;
     }
 
-    _sessionLastTick = DateTime.now();
+    _sessionLastTick = _now();
     _sessionLastAudioPlayerPlaying = true;
   }
 
@@ -231,12 +233,12 @@ class ListeningStatsService {
     final song = _sessionSong;
     if (song == null) return;
 
-    final now = DateTime.now();
+    final now = _now();
     final lastTick = _sessionLastTick;
     _sessionLastTick = now;
     if (lastTick == null) return;
 
-    final shouldCount = wasPlaying ?? _sessionLastAudioPlayerPlaying;
+    final shouldCount = _sessionLastAudioPlayerPlaying && (wasPlaying ?? true);
     if (!shouldCount) return;
 
     final listenedDuration = now.difference(lastTick);
@@ -274,11 +276,10 @@ class ListeningStatsService {
     PlayerState state, {
     Map? currentSong,
   }) {
-    // just_audio keeps `playing` true after completion, so treat it as paused.
+    // `playing` is the intent to play; it also stays true during buffering
+    // and after completion. Count only a ready output, not these silent gaps.
     final playing =
-        state.playing &&
-        state.processingState != ProcessingState.completed &&
-        state.processingState != ProcessingState.idle;
+        state.playing && state.processingState == ProcessingState.ready;
     if (playing == _sessionLastAudioPlayerPlaying) return;
 
     if (playing) {
@@ -396,11 +397,12 @@ class ListeningStatsService {
   Future<void> clearStats() async {
     _dirty = false;
     _listeningTimeRemainder = Duration.zero;
-    final now = DateTime.now();
+    final now = _now();
     final cleared = createEmptyListeningStats(
       now.year,
       currentMonthKey: listeningStatsMonthKey(now),
     );
+    cleared['syncResetId'] = SyncSecurity.randomToken(16);
     _stats = cleared;
     await deleteData('user', storageKey);
     // Persist the cleared map last so an in-flight checkpoint flush can't
@@ -410,6 +412,16 @@ class ListeningStatsService {
     }
   }
 
+  Future<void> prepareForSync() async {
+    final raw = Hive.box('user').get(storageKey);
+    if (raw is Map &&
+        raw['schemaVersion'] != wrappedListeningStatsSchemaVersion) {
+      _readStats();
+    }
+    recordListeningSessionProgress();
+    await flush();
+  }
+
   /// Writes pending stats to disk if anything changed since the last write.
   /// Called at playback checkpoints and when the app is backgrounded/closed.
   Future<void> flush() async {
@@ -417,7 +429,7 @@ class ListeningStatsService {
   }
 
   Map<String, dynamic> _readStats([DateTime? now]) {
-    final currentDate = now ?? DateTime.now();
+    final currentDate = now ?? _now();
     final cached = _stats;
     if (cached != null) {
       final previousMonthKey = cached['currentMonthKey']?.toString();

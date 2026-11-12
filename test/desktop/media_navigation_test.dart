@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hive/hive.dart';
+import 'package:hive_ce/hive_ce.dart';
 import 'package:nicofy/main.dart' show logger;
 import 'package:nicofy/services/audio_service.dart';
 import 'package:nicofy/services/settings_manager.dart';
