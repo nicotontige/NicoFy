@@ -4,6 +4,7 @@ import 'package:audio_service/audio_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_ce/hive_ce.dart';
 import 'package:nicofy/services/audio_service_android_auto.dart';
+import 'package:nicofy/services/common_services.dart';
 
 void main() {
   late Directory temporaryDirectory;
@@ -15,7 +16,9 @@ void main() {
       'nicofy_android_auto_test',
     );
     Hive.init(temporaryDirectory.path);
-    await Hive.openBox('userNoBackup');
+    for (final name in ['settings', 'user', 'userNoBackup', 'cache']) {
+      await Hive.openBox(name);
+    }
   });
 
   setUp(() {
@@ -136,17 +139,61 @@ void main() {
       }
     });
   });
+
+  group('shuffling from the car', () {
+    setUp(() {
+      userLikedSongsList.value = [
+        _song(ytid: 'a', title: 'A'),
+        _song(ytid: 'b', title: 'B'),
+      ];
+    });
+    tearDown(() => userLikedSongsList.value = []);
+
+    test('a list of songs opens with a shuffle row', () async {
+      final rows = await browser.children('liked_songs');
+
+      expect(rows.first.id, 'shuffle:liked_songs');
+      expect(rows.first.playable, isTrue);
+      expect(rows.skip(1).map((row) => row.title), ['A', 'B']);
+    });
+
+    test('the queue is never offered for shuffling', () async {
+      host.queue
+        ..add(_song(ytid: 'a'))
+        ..add(_song(ytid: 'b'));
+
+      final rows = await browser.children('current_queue');
+
+      expect(rows.any((row) => row.id.startsWith('shuffle:')), isFalse);
+    });
+
+    test('a single song gets no shuffle row', () async {
+      userLikedSongsList.value = [_song(ytid: 'a')];
+
+      final rows = await browser.children('liked_songs');
+
+      expect(rows.map((row) => row.id), isNot(contains('shuffle:liked_songs')));
+    });
+
+    test('the shuffle row plays the whole list shuffled', () async {
+      final played = await browser.playFromMediaId('shuffle:liked_songs');
+
+      expect(played, isTrue);
+      expect(host.shuffledSongs?.map((song) => song['ytid']), ['a', 'b']);
+    });
+  });
 }
 
-Map<String, dynamic> _song({String ytid = 'video-1', String title = 'Song'}) => {
-  'ytid': ytid,
-  'id': ytid,
-  'title': title,
-  'artist': 'Artist',
-  'highResImage': 'https://example.com/song.jpg',
-  'lowResImage': 'https://example.com/song-small.jpg',
-  'isLive': false,
-};
+Map<String, dynamic> _song({String ytid = 'video-1', String title = 'Song'}) =>
+    {
+      'ytid': ytid,
+      'id': ytid,
+      'title': title,
+      'artist': 'Artist',
+      'highResImage': 'https://example.com/song.jpg',
+      'lowResImage': 'https://example.com/song-small.jpg',
+      'isLive': false,
+    };
 
 class _FakeAndroidAutoHost implements AndroidAutoHost {
   final List<Map> queue = [];
@@ -213,6 +260,13 @@ class _FakeAndroidAutoHost implements AndroidAutoHost {
     List<Map> songs, {
     required int songIndex,
   }) async {}
+
+  List<Map>? shuffledSongs;
+
+  @override
+  Future<void> shuffleBrowserPlaylist(List<Map> songs) async {
+    shuffledSongs = songs;
+  }
 
   @override
   void publishPreparedBrowserItem(MediaItem item) {

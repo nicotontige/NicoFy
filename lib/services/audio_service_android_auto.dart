@@ -1,5 +1,6 @@
 import 'package:audio_service/audio_service.dart';
 import 'package:flutter/foundation.dart';
+import 'package:nicofy/localization/app_localizations.dart';
 import 'package:nicofy/services/common_services.dart';
 import 'package:nicofy/services/playlists_manager.dart';
 import 'package:nicofy/services/settings_manager.dart';
@@ -27,6 +28,9 @@ abstract interface class AndroidAutoHost {
   Future<void> resumeAudio();
   Future<void> skipToQueueItem(int index);
   Future<void> playBrowserPlaylist(List<Map> songs, {required int songIndex});
+
+  /// Plays [songs] in a random order, the way the phone's shuffle button does.
+  Future<void> shuffleBrowserPlaylist(List<Map> songs);
   void publishPreparedBrowserItem(MediaItem item);
 }
 
@@ -48,6 +52,7 @@ class AndroidAutoBrowser {
   static const String _songMediaIdPrefix = 'song:';
   static const String _playlistMediaIdPrefix = 'playlist:';
   static const String _recentMediaIdPrefix = 'recent:';
+  static const String _shuffleMediaIdPrefix = 'shuffle:';
 
   /// The extras a car reads to put a tick on a browse row already listened to,
   /// and a progress bar on the one still playing. The keys are the ones
@@ -161,6 +166,28 @@ class AndroidAutoBrowser {
 
     return null;
   }
+
+  /// The containers a car offers to shuffle: the ones the phone has a shuffle
+  /// button for. Shuffling the queue or search results makes little sense.
+  bool _canShuffle(String containerId) =>
+      containerId == _rootLiked ||
+      containerId == _rootOffline ||
+      containerId == _rootRecent ||
+      _parsePlaylistMediaId(containerId) != null;
+
+  String _shuffleTitle() {
+    try {
+      return lookupAppLocalizations(languageSetting).shuffle;
+    } catch (_) {
+      return 'Shuffle';
+    }
+  }
+
+  MediaItem _shuffleItem(String containerId) => MediaItem(
+    id: '$_shuffleMediaIdPrefix$containerId',
+    title: _shuffleTitle(),
+    extras: const {'isBrowsable': false},
+  );
 
   MediaItem _browsableCategory(
     String id,
@@ -379,7 +406,13 @@ class AndroidAutoBrowser {
     }
 
     final songs = await _songsForContainer(parentMediaId);
-    if (songs.isNotEmpty) return _browsableSongs(songs, parentMediaId);
+    if (songs.isNotEmpty) {
+      return [
+        if (songs.length > 1 && _canShuffle(parentMediaId))
+          _shuffleItem(parentMediaId),
+        ..._browsableSongs(songs, parentMediaId),
+      ];
+    }
 
     final message = _emptyCategoryMessage(parentMediaId);
     return message == null ? const [] : _emptyCategory(parentMediaId, message);
@@ -531,6 +564,10 @@ class AndroidAutoBrowser {
 
   Future<MediaItem?> mediaItemForId(String mediaId) async {
     try {
+      if (mediaId.startsWith(_shuffleMediaIdPrefix)) {
+        return _shuffleItem(mediaId.substring(_shuffleMediaIdPrefix.length));
+      }
+
       final parsed = _parseSongMediaId(mediaId);
       if (parsed != null) {
         final songs = await _songsForContainer(parsed.container);
@@ -557,6 +594,14 @@ class AndroidAutoBrowser {
 
   Future<bool> playFromMediaId(String mediaId) async {
     try {
+      if (mediaId.startsWith(_shuffleMediaIdPrefix)) {
+        final container = mediaId.substring(_shuffleMediaIdPrefix.length);
+        final songs = await _songsForContainer(container);
+        if (songs.isEmpty) return false;
+        await _host.shuffleBrowserPlaylist(songs);
+        return true;
+      }
+
       final parsed = _parseSongMediaId(mediaId);
       if (parsed != null &&
           await _playFromContainer(parsed.container, parsed.token)) {
