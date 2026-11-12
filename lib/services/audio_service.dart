@@ -84,8 +84,14 @@ class NicoFyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
       );
     }
 
-    _initialize();
+    _startup = _initialize();
   }
+
+  /// Completes once the queue the last session left behind is back. Android
+  /// Auto can start the app and ask it to play in the same breath: a command
+  /// that arrived before the restore saw an empty queue, played a lone recent
+  /// song instead, and the stored playlist was overwritten by it.
+  late final Future<void> _startup;
 
   // Player and service collaborators.
   late final AndroidEqualizer? _androidEqualizer;
@@ -1839,6 +1845,25 @@ class NicoFyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
     final normalisedSong = normaliseResumableSong(song);
     if (normalisedSong == null) return;
 
+    // The song asked for is already in the queue, usually the one a restored
+    // queue stopped on: carry on inside that queue rather than replace the
+    // whole playlist with it.
+    final ytid = normalisedSong['ytid'];
+    final current = currentSong;
+    if (current != null && songYtid(current) == ytid) {
+      if (audioPlayer.audioSource == null) {
+        await _playFromQueue(_currentQueueIndex);
+      } else {
+        await play();
+      }
+      return;
+    }
+    final queueIndex = _queueList.indexWhere((s) => songYtid(s) == ytid);
+    if (queueIndex >= 0) {
+      await skipToSong(queueIndex);
+      return;
+    }
+
     await playPlaylistSong(
       playlist: {
         'title': 'NicoFy',
@@ -1892,6 +1917,14 @@ class NicoFyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
 
   @override
   void publishPreparedBrowserItem(MediaItem item) {
+    // Preparing a song the queue already holds must not hide the rest of the
+    // queue from the car behind a one-item list.
+    final ytid = item.extras?['ytid']?.toString();
+    if (ytid != null && _queueList.any((song) => songYtid(song) == ytid)) {
+      _updateQueueMediaItems();
+      _updatePlaybackState(force: true);
+      return;
+    }
     mediaItem.add(item);
     queue.add([item]);
     playbackState.add(
@@ -1914,7 +1947,10 @@ class NicoFyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
   Future<List<MediaItem>> getChildren(
     String parentMediaId, [
     Map<String, dynamic>? options,
-  ]) => _androidAutoBrowser.children(parentMediaId);
+  ]) async {
+    await _startup;
+    return _androidAutoBrowser.children(parentMediaId);
+  }
 
   @override
   ValueStream<Map<String, dynamic>> subscribeToChildren(String parentMediaId) =>
@@ -1927,24 +1963,35 @@ class NicoFyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
   ]) => _androidAutoBrowser.search(query);
 
   @override
-  Future<void> playFromSearch(String query, [Map<String, dynamic>? extras]) =>
-      _androidAutoBrowser.playFromSearch(query);
+  Future<void> playFromSearch(
+    String query, [
+    Map<String, dynamic>? extras,
+  ]) async {
+    await _startup;
+    await _androidAutoBrowser.playFromSearch(query);
+  }
 
   @override
-  Future<MediaItem?> getMediaItem(String mediaId) =>
-      _androidAutoBrowser.mediaItemForId(mediaId);
+  Future<MediaItem?> getMediaItem(String mediaId) async {
+    await _startup;
+    return _androidAutoBrowser.mediaItemForId(mediaId);
+  }
 
   @override
   Future<void> prepareFromMediaId(
     String mediaId, [
     Map<String, dynamic>? extras,
-  ]) => _androidAutoBrowser.prepareFromId(mediaId);
+  ]) async {
+    await _startup;
+    await _androidAutoBrowser.prepareFromId(mediaId);
+  }
 
   @override
   Future<void> playFromMediaId(
     String mediaId, [
     Map<String, dynamic>? extras,
   ]) async {
+    await _startup;
     await _androidAutoBrowser.playFromMediaId(mediaId);
   }
 
@@ -1966,6 +2013,7 @@ class NicoFyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
 
   @override
   Future<void> play() async {
+    await _startup;
     if (isDesktopPlatform && _currentLoadingIndex >= 0)
       _queuePlayWhenReady = true;
     try {
@@ -2899,7 +2947,10 @@ class NicoFyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
   }
 
   @override
-  Future<void> skipToQueueItem(int index) => skipToSong(index);
+  Future<void> skipToQueueItem(int index) async {
+    await _startup;
+    await skipToSong(index);
+  }
 
   @override
   Future<void> skipToNext({bool playWhenReady = true}) async {
