@@ -1,0 +1,13 @@
+The Android build of 1.1.0 failed, so 1.1.0 never reached phones. This release brings everything it announced, plus a better update window.
+
+New
+- Local sync: keep your library in step between your NicoFy devices over Wi-Fi, with no account and no cloud. Pair two devices with a six-digit PIN, then choose what to exchange: liked songs, playlists and folders, recently played, listening recap, search history, liked radio stations. Settings > Local sync.
+- Android Auto: every playlist, and the Liked, Downloaded and Recently played lists, now open with a "Shuffle" row that plays the whole list in random order, like the shuffle button on the phone.
+- The "update available" window now lists the changes of every version you skipped, not only the latest one.
+
+Fixes
+- Android Auto: when the car reopened the app, the saved queue was sometimes lost: only the last song came back and the automatic song picker filled in the rest. The whole queue now comes back, where you left it.
+- Listening stats no longer count time spent buffering, and the song playing when the month's history is full is no longer dropped.
+- Old cache entries are cleaned up at start-up.
+- Plain HTTP is now allowed only for the player's own local proxy, not for the whole app.
+- Built with Flutter 3.50.
