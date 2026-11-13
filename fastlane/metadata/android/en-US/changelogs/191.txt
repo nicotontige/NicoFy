@@ -1,0 +1,5 @@
+New
+- Updates are now downloaded and installed from inside the app. When an update is available, "Download" fetches it with a progress bar and opens Android's installer: no browser needed, which makes updating possible on Android TV. The first time, Android asks you to allow NicoFy to install apps; accept once and future updates install the same way. If anything goes wrong, the download link opens as before.
+
+Android TV
+- This version has to be installed by hand one last time (for example with the Downloader app, or adb). From the next version on, updates install from NicoFy itself.

@@ -5,7 +5,7 @@ repository: https://github.com/nicotontige/NicoFy
 issue_tracker: https://github.com/nicotontige/NicoFy/issues
 
 publish_to: 'none'
-version: 1.1.1+190 # run update.sh after changing the version
+version: 1.2.0+191 # run update.sh after changing the version
 
 environment:
   sdk: '>=3.14.0 <4.0.0'
