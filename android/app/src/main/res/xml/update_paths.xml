@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The only files NicoFy shares: the update it downloaded, handed to the
+     system installer. -->
+<paths>
+    <cache-path name="updates" path="updates/" />
+</paths>

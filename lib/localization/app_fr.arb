@@ -78,6 +78,7 @@
   "deleteFolderQuestion": "Êtes-vous sûr de vouloir supprimer ce dossier ? Les playlists qu'il contient seront déplacées vers la bibliothèque principale.",
   "deletePlaylist": "Supprimer la playlist",
   "download": "Télécharger",
+  "downloadingUpdate": "Téléchargement de la mise à jour",
   "downloadAppUpdate": "Télécharger la mise à jour de l'application",
   "downloadCancelled": "Téléchargement annulé",
   "downloadFailed": "Échec du téléchargement",
@@ -455,5 +456,6 @@
   "useProxyDescription": "N'utilisez le proxy qu'en cas d'échec de la diffusion en continu ; une utilisation inutile pourrait perturber la lecture.",
   "userPlaylists": "Playlists des Utilisateurs",
   "yes": "Oui",
-  "youtubePlaylistLinkOrId": "Lien ou identifiant d'une playlist YouTube"
+  "youtubePlaylistLinkOrId": "Lien ou identifiant d'une playlist YouTube",
+  "updateDownloadFailed": "Impossible d'installer la mise à jour depuis l'appli, ouverture du lien de téléchargement"
 }

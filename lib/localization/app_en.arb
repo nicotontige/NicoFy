@@ -95,6 +95,7 @@
   "deleteFolderQuestion": "Are you sure you want to delete this folder? Playlists inside will be moved to the main library.",
   "deletePlaylist": "Delete playlist",
   "download": "Download",
+  "downloadingUpdate": "Downloading the update",
   "downloadAppUpdate": "Download app update",
   "downloadCancelled": "Download cancelled",
   "downloadFailed": "Download failed",
@@ -484,5 +485,6 @@
   "useProxyDescription": "Use the proxy only when streaming fails, unnecessary use may break playback.",
   "userPlaylists": "User playlists",
   "yes": "Yes",
-  "youtubePlaylistLinkOrId": "YouTube playlist link or ID"
+  "youtubePlaylistLinkOrId": "YouTube playlist link or ID",
+  "updateDownloadFailed": "The update could not be installed from the app, opening the download link"
 }

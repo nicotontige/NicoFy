@@ -31,6 +31,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:nicofy/constants/version.dart';
 import 'package:nicofy/extensions/l10n.dart';
 import 'package:nicofy/main.dart';
+import 'package:nicofy/services/app_update_installer.dart';
 import 'package:nicofy/services/data_manager.dart';
 import 'package:nicofy/services/router_service.dart';
 import 'package:nicofy/services/settings_manager.dart';
@@ -162,10 +163,16 @@ Future<void> checkAppUpdates() async {
               child: Text(context.l10n!.cancel),
             ),
             FilledButton.icon(
-              onPressed: () {
-                getDownloadUrl(map).then(
-                  (url) => {launchURL(Uri.parse(url)), Navigator.pop(context)},
-                );
+              onPressed: () async {
+                final url = await getDownloadUrl(map);
+                if (!context.mounted) return;
+                Navigator.pop(context);
+                final appContext = NavigationManager().context;
+                if (isAndroidPlatform && appContext.mounted) {
+                  await AppUpdateInstaller.downloadAndInstall(appContext, url);
+                } else {
+                  await launchURL(Uri.parse(url));
+                }
               },
               icon: const Icon(FluentIcons.arrow_download_20_regular),
               label: Text(context.l10n!.download),
