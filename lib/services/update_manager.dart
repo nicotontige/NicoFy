@@ -41,7 +41,7 @@ import 'package:nicofy/widgets/auto_format_text.dart';
 const String checkUrl =
     'https://raw.githubusercontent.com/nicotontige/NicoFy/update/check.json';
 const String releasesUrl =
-    'https://api.github.com/repos/nicotontige/NicoFy/releases/latest';
+    'https://api.github.com/repos/nicotontige/NicoFy/releases?per_page=50';
 const String downloadUrlKey = 'url';
 const String downloadUrlArm64Key = 'arm64url';
 const String downloadFilename = 'NicoFy.apk';
@@ -76,8 +76,11 @@ Future<void> checkAppUpdates() async {
       return;
     }
 
-    final releasesResponse =
-        json.decode(releasesRequest.body) as Map<String, dynamic>;
+    final releaseNotes = releaseNotesSince(
+      json.decode(releasesRequest.body) as List,
+      installed: appVersion,
+      latest: latestVersion,
+    );
 
     await showDialog(
       context: NavigationManager().context,
@@ -141,7 +144,7 @@ Future<void> checkAppUpdates() async {
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: SingleChildScrollView(
-                  child: AutoFormatText(text: releasesResponse['body']),
+                  child: AutoFormatText(text: releaseNotes),
                 ),
               ),
             ],
@@ -229,6 +232,49 @@ void showUpdateCheckDialog(BuildContext context) {
       );
     },
   );
+}
+
+final _plainVersion = RegExp(r'^\d+(\.\d+)*$');
+
+/// The notes of every release between the installed version and [latest],
+/// newest first, so someone who skipped a few updates sees all they missed
+/// and not only the last one. A release that shipped no APK never reached a
+/// phone and is left out: the next one carries its changes.
+String releaseNotesSince(
+  List releases, {
+  required String installed,
+  required String latest,
+}) {
+  final sections = <({String version, String text})>[];
+  for (final release in releases.whereType<Map>()) {
+    final version = release['tag_name']?.toString() ?? '';
+    if (!_plainVersion.hasMatch(version)) continue;
+    if (release['draft'] == true || release['prerelease'] == true) continue;
+    if (!isLatestVersionHigher(installed, version)) continue;
+    if (isLatestVersionHigher(latest, version)) continue;
+
+    final assets = release['assets'];
+    final shippedApk =
+        assets is List &&
+        assets.whereType<Map>().any(
+          (asset) => asset['name'] == downloadFilename,
+        );
+    if (!shippedApk) continue;
+
+    final body = release['body']?.toString().trim() ?? '';
+    sections.add((
+      version: version,
+      text: body.isEmpty ? '**$version**' : '**$version**\n$body',
+    ));
+  }
+  sections.sort(
+    (a, b) => isLatestVersionHigher(a.version, b.version)
+        ? 1
+        : isLatestVersionHigher(b.version, a.version)
+        ? -1
+        : 0,
+  );
+  return sections.map((section) => section.text).join('\n\n');
 }
 
 bool isLatestVersionHigher(String appVersion, String latestVersion) {

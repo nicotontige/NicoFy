@@ -81,9 +81,26 @@ jobs:
         run: |
           echo "version=$REF_NAME" >> "$GITHUB_OUTPUT"
           [[ "$REF_TYPE" == tag ]] && echo "prerelease=false" >> "$GITHUB_OUTPUT" || echo "prerelease=true" >> "$GITHUB_OUTPUT"
+      # Whichever workflow finishes first creates the release, so the notes have
+      # to be given here too, or a release whose APK build failed stays blank.
+      - name: Read release notes
+        id: notes
+        shell: bash
+        env:
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          build=$(grep -E '^version:' pubspec.yaml | sed -E 's/^version: *[^+]+\+([0-9]+).*/\1/')
+          notes="fastlane/metadata/android/en-US/changelogs/${build}.txt"
+          {
+            echo 'body<<NICOFY_NOTES_EOF'
+            if [[ -f "$notes" ]]; then cat "$notes"; else echo "NicoFy $REF_NAME"; fi
+            echo 'NICOFY_NOTES_EOF'
+          } >> "$GITHUB_OUTPUT"
       - name: Release desktop bundle
         uses: svenstaro/upload-release-action@v2
         with:
+          release_name: NicoFy ${{ steps.extract_version.outputs.version }}
+          body: ${{ steps.notes.outputs.body }}
           repo_name: nicotontige/NicoFy
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: ${{ matrix.artifact }}
