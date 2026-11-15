@@ -81,9 +81,8 @@ jobs:
       - name: Analyze Dart code
         run: flutter analyze .
 
-      - name: Build arm64 APK
-        run: flutter build apk --release --split-per-abi --target-platform="android-arm64" --flavor github
-
+      # One universal APK only: a per-ABI build tempted people into the arm64
+      # one, which a Mi Box (64-bit CPU, 32-bit Android) refuses to install.
       - name: Build universal APK
         run: flutter build apk --release --flavor github
 
@@ -94,14 +93,13 @@ jobs:
           version="${{ steps.version.outputs.version }}"
           notes="fastlane/metadata/android/en-US/changelogs/${{ steps.version.outputs.build }}.txt"
           [[ -f "$notes" ]] || { echo "NicoFy $version" > release-notes.md; notes=release-notes.md; }
-          cp build/app/outputs/flutter-apk/app-arm64-v8a-github-release.apk NicoFy-arm64-v8a.apk
           cp build/app/outputs/flutter-apk/app-github-release.apk NicoFy.apk
           # The desktop workflow may have created the release first.
           if gh release view "$version" > /dev/null 2>&1; then
             gh release edit "$version" --title "NicoFy $version" --notes-file "$notes" --prerelease=false
-            gh release upload "$version" NicoFy.apk NicoFy-arm64-v8a.apk --clobber
+            gh release upload "$version" NicoFy.apk --clobber
           else
-            gh release create "$version" NicoFy.apk NicoFy-arm64-v8a.apk \
+            gh release create "$version" NicoFy.apk \
               --title "NicoFy $version" --notes-file "$notes"
           fi
 
@@ -116,7 +114,9 @@ jobs:
           announcement=$(curl -fsSL "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/update/check.json" | jq -c '.announcementurl' 2>/dev/null || true)
           mkdir update-branch && cd update-branch
           git init -q -b update
-          jq -n --arg v "$version" --arg u "$base/NicoFy.apk" --arg a "$base/NicoFy-arm64-v8a.apk" \
+          # arm64url is still read by versions up to 1.2.0 on 64-bit devices,
+          # so it points at the same universal APK.
+          jq -n --arg v "$version" --arg u "$base/NicoFy.apk" --arg a "$base/NicoFy.apk" \
             --argjson ann "${announcement:-null}" \
             '{version: $v, url: $u, arm64url: $a, announcementurl: $ann}' > check.json
           git add check.json

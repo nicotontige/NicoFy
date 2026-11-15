@@ -22,7 +22,6 @@
  */
 
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/foundation.dart';
@@ -44,7 +43,6 @@ const String checkUrl =
 const String releasesUrl =
     'https://api.github.com/repos/nicotontige/NicoFy/releases?per_page=50';
 const String downloadUrlKey = 'url';
-const String downloadUrlArm64Key = 'arm64url';
 const String downloadFilename = 'NicoFy.apk';
 
 Future<void> checkAppUpdates() async {
@@ -164,7 +162,7 @@ Future<void> checkAppUpdates() async {
             ),
             FilledButton.icon(
               onPressed: () async {
-                final url = await getDownloadUrl(map);
+                final url = getDownloadUrl(map);
                 if (!context.mounted) return;
                 Navigator.pop(context);
                 final appContext = NavigationManager().context;
@@ -307,21 +305,9 @@ bool isLatestVersionHigher(String appVersion, String latestVersion) {
   return false;
 }
 
-Future<String> getCPUArchitecture() async {
-  final info = await Process.run('uname', ['-m']);
-  final cpu = info.stdout.toString().replaceAll('\n', '');
-
-  return cpu;
-}
-
-Future<String> getDownloadUrl(Map<String, dynamic> map) async {
-  final cpuArchitecture = await getCPUArchitecture();
-  final url = cpuArchitecture == 'aarch64'
-      ? map[downloadUrlArm64Key].toString()
-      : map[downloadUrlKey].toString();
-
-  return url;
-}
+/// One universal APK serves every device. Picking by `uname -m` sent a Mi Box
+/// (64-bit kernel, 32-bit Android) an arm64 APK it could not install.
+String getDownloadUrl(Map<String, dynamic> map) => map[downloadUrlKey].toString();
 
 /// Fetch only the announcement URL from the `check.json` file and set the
 /// global `announcementURL` ValueNotifier. This does not trigger releases
