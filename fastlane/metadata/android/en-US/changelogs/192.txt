@@ -1,0 +1,2 @@
+Fixed
+- NicoFy now ships as a single APK that installs on every device. Some Android TV boxes, such as the Mi Box, have a 64-bit processor but run a 32-bit Android: they refused the arm64 APK with "App not installed", and the in-app updater picked that same APK for them. Both the release and the updater now use NicoFy.apk only.
