@@ -1,0 +1,3 @@
+Fixed
+- Songs no longer cut out or refuse to start when YouTube's playback challenge can't be solved: NicoFy now skips those links and plays the next usable one instead.
+- A failed download of YouTube's player script no longer breaks playback until the app is restarted.

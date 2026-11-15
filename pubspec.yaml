@@ -5,7 +5,7 @@ repository: https://github.com/nicotontige/NicoFy
 issue_tracker: https://github.com/nicotontige/NicoFy/issues
 
 publish_to: 'none'
-version: 1.2.1+2193 # run update.sh after changing the version. Build numbers start at 2193: the old arm64 APKs carried 2000 + build, and Android refuses a lower one.
+version: 1.2.2+2194 # run update.sh after changing the version. Build numbers start at 2193: the old arm64 APKs carried 2000 + build, and Android refuses a lower one.
 
 environment:
   sdk: '>=3.14.0 <4.0.0'
