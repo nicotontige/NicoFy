@@ -160,6 +160,7 @@
   "listeningStats": "Statistiques d'écoute",
   "listeningStatsCleared": "Statistiques d'écoute effacées",
   "listeningStatsDescription": "Suivez les statistiques d'écoute locales pour obtenir des bilans mensuels et annuels.",
+  "liveStream": "En direct",
   "loading": "Chargement",
   "lyrics": "Paroles",
   "lyricsNotAvailable": "Paroles non disponibles",
@@ -176,6 +177,7 @@
   "no": "Non",
   "noCustomPlaylists": "Aucune playlist personnalisée n'a encore été créée",
   "noFolders": "Aucun dossier n'a encore été créé",
+  "noLikedSongsYet": "Aucun titre favori pour l'instant",
   "noListeningStats": "Aucune statistique d'écoute n'est encore disponible",
   "noOfflineLibraryContent": "Aucun contenu hors ligne. Activez le mode en ligne ou téléchargez des playlists ou des titres pour utiliser la bibliothèque.",
   "noPlaylistsAdded": "Aucune playlist n'a encore été ajoutée",
@@ -183,6 +185,8 @@
   "noSongsInPlaylist": "Aucun titre dans la playlist",
   "noSongsInQueue": "Aucun titre dans la file d'attente",
   "notYTlist": "Identifiant de playlist YouTube non valide",
+  "nothingDownloadedYet": "Aucun titre téléchargé pour l'instant",
+  "nothingPlayedYet": "Rien n'a encore été écouté",
   "offlineMode": "Mode hors ligne",
   "offlineModeDescription": "Désactivez les fonctionnalités en ligne et utilisez NicoFy complètement hors ligne.",
   "offlinePlaylists": "Playlists hors ligne",
@@ -220,6 +224,7 @@
       }
     }
   },
+  "radioStation": "Station de radio",
   "radioStations": "Stations de Radio",
   "radioUnavailable": "Aucun titre similaire trouvé pour le moment",
   "recentlyPlayed": "Lectures récentes",

@@ -180,13 +180,17 @@ class AndroidAutoBrowser {
       containerId == _rootRecent ||
       _parsePlaylistMediaId(containerId) != null;
 
-  String _shuffleTitle() {
+  /// The app's strings in the language picked in its settings. A car has no
+  /// widget tree to read them from.
+  AppLocalizations? get _l10n {
     try {
-      return lookupAppLocalizations(languageSetting).shuffle;
+      return lookupAppLocalizations(languageSetting);
     } catch (_) {
-      return 'Shuffle';
+      return null;
     }
   }
+
+  String _shuffleTitle() => _l10n?.shuffle ?? 'Shuffle';
 
   MediaItem _shuffleItem(String containerId) => MediaItem(
     id: '$_shuffleMediaIdPrefix$containerId',
@@ -283,28 +287,29 @@ class AndroidAutoBrowser {
   ];
 
   String? _emptyCategoryMessage(String parentMediaId) {
+    final l10n = _l10n;
     switch (parentMediaId) {
       case _rootQueue:
-        return 'Nothing in the queue yet';
+        return l10n?.noSongsInQueue ?? 'Nothing in the queue yet';
       case _rootLiked:
-        return 'No liked songs yet';
+        return l10n?.noLikedSongsYet ?? 'No liked songs yet';
       case _rootOffline:
-        return 'Nothing downloaded yet';
+        return l10n?.nothingDownloadedYet ?? 'Nothing downloaded yet';
       case _rootRecent:
-        return 'Nothing played yet';
+        return l10n?.nothingPlayedYet ?? 'Nothing played yet';
       case _rootPlaylists:
-        return 'No playlists yet';
+        return l10n?.noPlaylistsAdded ?? 'No playlists yet';
     }
     return _parsePlaylistMediaId(parentMediaId) == null
         ? null
-        : 'This playlist is empty';
+        : l10n?.noSongsInPlaylist ?? 'This playlist is empty';
   }
 
   MediaItem _playlistMediaItem(Map playlist, String id) {
     final image = playlist['image']?.toString();
     return MediaItem(
       id: _playlistMediaId(_playlistSource(playlist), id),
-      title: playlist['title']?.toString() ?? 'Playlist',
+      title: playlist['title']?.toString() ?? _l10n?.playlist ?? 'Playlist',
       playable: false,
       artUri: image == null || image.isEmpty ? null : Uri.tryParse(image),
       extras: const {'isBrowsable': true},
@@ -396,16 +401,20 @@ class AndroidAutoBrowser {
     }
 
     if (parentMediaId == AudioService.browsableRootId) {
+      final l10n = _l10n;
       return [
-        _browsableCategory(_rootQueue, 'Now Playing Queue'),
-        _browsableCategory(_rootLiked, 'Liked Songs'),
+        _browsableCategory(_rootQueue, l10n?.queue ?? 'Now Playing Queue'),
+        _browsableCategory(_rootLiked, l10n?.likedSongs ?? 'Liked Songs'),
         _browsableCategory(
           _rootPlaylists,
-          'Playlists',
+          l10n?.playlists ?? 'Playlists',
           playableHint: AndroidContentStyle.gridItemHintValue,
         ),
-        _browsableCategory(_rootOffline, 'Downloaded'),
-        _browsableCategory(_rootRecent, 'Recently Played'),
+        _browsableCategory(_rootOffline, l10n?.offlineSongs ?? 'Downloaded'),
+        _browsableCategory(
+          _rootRecent,
+          l10n?.recentlyPlayed ?? 'Recently Played',
+        ),
       ];
     }
 

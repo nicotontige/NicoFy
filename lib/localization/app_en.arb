@@ -73,7 +73,11 @@
   "lastFmAuthorizationMessage": "Approve NicoFy in the browser that just opened, then confirm here.",
   "listenBrainzToken": "User token",
   "listenBrainzTokenDescription": "Paste the user token from your ListenBrainz settings page.",
+  "liveStream": "Live stream",
+  "noLikedSongsYet": "No liked songs yet",
   "notConnected": "Not connected",
+  "nothingDownloadedYet": "Nothing downloaded yet",
+  "nothingPlayedYet": "Nothing played yet",
   "pendingListens": "Pending listens",
   "pendingListensDescription": "{count} waiting to be sent, tap to send them now",
   "pendingListensNone": "Everything has been sent",
@@ -85,6 +89,7 @@
       }
     }
   },
+  "radioStation": "Radio Station",
   "radioUnavailable": "No similar songs found right now",
   "scrobbling": "Scrobbling",
   "scrobblingDescription": "Send what you listen to to ListenBrainz or Last.fm.",

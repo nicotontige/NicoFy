@@ -299,7 +299,9 @@ class NicoFyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
     final liked = isSongAlreadyLiked(currentSong?['ytid']);
     return MediaControl.custom(
       androidIcon: liked ? 'drawable/ic_liked' : 'drawable/ic_like',
-      label: liked ? 'Unlike' : 'Like',
+      label: liked
+          ? _l10n?.removeFromLikedSongs ?? 'Unlike'
+          : _l10n?.addToLikedSongs ?? 'Like',
       name: _likeCustomAction,
     );
   }
@@ -2826,8 +2828,8 @@ class NicoFyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
         'id': id,
         'ytid': id, // Use radio ID as ytid for compatibility
         'title': name,
-        'artist': genre ?? 'Radio Station',
-        'album': 'Live Stream',
+        'artist': genre ?? _l10n?.radioStation ?? 'Radio Station',
+        'album': _l10n?.liveStream ?? 'Live Stream',
         'highResImage': image,
         'lowResImage': image,
         'duration': null, // Radio streams are live
