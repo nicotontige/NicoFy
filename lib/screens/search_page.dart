@@ -47,6 +47,7 @@ import 'package:nicofy/widgets/playlist_bar.dart';
 import 'package:nicofy/widgets/radio_station_card.dart';
 import 'package:nicofy/widgets/song_bar.dart';
 import 'package:nicofy/widgets/sort_chips.dart';
+import 'package:nicofy/widgets/text_field_remote_navigation.dart';
 
 /// The result categories the search page can show, in the order their tabs
 /// appear.
@@ -101,7 +102,7 @@ class _SearchPageState extends State<SearchPage> {
     if (mounted) setState(() {});
 
     await search();
-    _inputNode.unfocus();
+    releaseTextFieldAfterSubmit(_inputNode);
   }
 
   @override
