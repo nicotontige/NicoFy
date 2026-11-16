@@ -215,6 +215,7 @@
   "provideIdOrNameError": "Veuillez indiquer un identifiant YouTube ou le nom d'une playlist personnalisée",
   "pureBlackTheme": "Thème sombre",
   "pureBlackThemeDescription": "Utilisez un fond noir pur en mode sombre pour les écrans OLED.",
+  "nowPlaying": "En lecture",
   "queue": "File d'attente",
   "radioStarted": "Radio lancée : {count} titres similaires à suivre",
   "@radioStarted": {

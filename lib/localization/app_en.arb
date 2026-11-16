@@ -247,6 +247,7 @@
   "provideIdOrNameError": "Please provide a YouTube ID or custom playlist name",
   "pureBlackTheme": "Pure black theme",
   "pureBlackThemeDescription": "Use a true black background in dark mode for OLED displays.",
+  "nowPlaying": "Now playing",
   "queue": "Queue",
   "radioStations": "Radio Stations",
   "recentlyPlayed": "Recently played",
