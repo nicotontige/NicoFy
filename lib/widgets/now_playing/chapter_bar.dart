@@ -221,7 +221,7 @@ class ChapterListView extends StatelessWidget {
                 ),
                 onTap: () {
                   unawaited(audioHandler.seekToChapter(i));
-                  Navigator.pop(context);
+                  closeCurrentBottomSheet();
                 },
               ),
           ],

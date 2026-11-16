@@ -51,7 +51,7 @@ PersistentBottomSheetController? showCustomBottomSheet(
             Padding(
               padding: const EdgeInsets.only(top: 12, bottom: 8),
               child: GestureDetector(
-                onTap: () => Navigator.pop(context),
+                onTap: closeCurrentBottomSheet,
                 child: Container(
                   width: 40,
                   height: 4,
@@ -92,6 +92,10 @@ PersistentBottomSheetController? showCustomBottomSheet(
 
 final isBottomSheetOpen = ValueNotifier<bool>(false);
 
+/// Closes the open sheet. Never close one with `Navigator.pop`: the sheet is
+/// not a route, and it hangs off the shell's Scaffold, so the navigator found
+/// from inside a tab is the tab's own, and popping it removes the page under
+/// the sheet and leaves a black screen.
 void closeCurrentBottomSheet() {
   try {
     _currentBottomSheetController?.close();
