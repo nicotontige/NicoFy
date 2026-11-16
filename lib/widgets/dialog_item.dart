@@ -24,6 +24,7 @@
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:nicofy/constants/app_constants.dart';
+import 'package:nicofy/widgets/remote_focusable.dart';
 
 class DialogItem extends StatelessWidget {
   const DialogItem({
@@ -58,46 +59,49 @@ class DialogItem extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
     return Padding(
       padding: padding,
-      child: Material(
-        color: colorScheme.surfaceContainerLow,
+      child: RemoteFocusFrame(
         borderRadius: commonBarRadius,
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
-          child: Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal: iconRightPadding,
-              vertical: 12,
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: iconContainerSize,
-                  height: iconContainerSize,
-                  decoration: BoxDecoration(
-                    color: iconBgColor,
-                    borderRadius: BorderRadius.circular(12),
+        child: Material(
+          color: colorScheme.surfaceContainerLow,
+          borderRadius: commonBarRadius,
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: onTap,
+            child: Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: iconRightPadding,
+                vertical: 12,
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: iconContainerSize,
+                    height: iconContainerSize,
+                    decoration: BoxDecoration(
+                      color: iconBgColor,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(icon, color: iconColor, size: iconSize),
                   ),
-                  child: Icon(icon, color: iconColor, size: iconSize),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    label,
-                    style: TextStyle(
-                      color: colorScheme.onSurface,
-                      fontWeight: FontWeight.w600,
-                      fontSize: fontSize,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      label,
+                      style: TextStyle(
+                        color: colorScheme.onSurface,
+                        fontWeight: FontWeight.w600,
+                        fontSize: fontSize,
+                      ),
                     ),
                   ),
-                ),
-                if (showChevron)
-                  Icon(
-                    FluentIcons.chevron_right_24_regular,
-                    color: colorScheme.onSurfaceVariant,
-                    size: 18,
-                  ),
-              ],
+                  if (showChevron)
+                    Icon(
+                      FluentIcons.chevron_right_24_regular,
+                      color: colorScheme.onSurfaceVariant,
+                      size: 18,
+                    ),
+                ],
+              ),
             ),
           ),
         ),

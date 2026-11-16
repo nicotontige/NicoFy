@@ -42,6 +42,7 @@ import 'package:nicofy/utilities/playlist_dialogs.dart';
 import 'package:nicofy/widgets/no_artwork_cube.dart';
 import 'package:nicofy/widgets/overflow_menu_button.dart';
 import 'package:nicofy/widgets/popup_menu_item.dart';
+import 'package:nicofy/widgets/remote_focusable.dart';
 import 'package:nicofy/widgets/rename_song_dialog.dart';
 
 List<PopupMenuEntry<String>> _buildSongMenuItems({
@@ -539,92 +540,95 @@ class _SongBarState extends State<SongBar> {
     final isSelecting = widget.isSelected != null;
     final isSelected = widget.isSelected ?? false;
 
-    return Material(
-      color: isSelected
-          ? colorScheme.secondaryContainer
-          : widget.backgroundColor ?? colorScheme.surfaceContainerLow,
+    return RemoteFocusFrame(
       borderRadius: widget.borderRadius,
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: isSelecting ? widget.onSelectionToggle : _handleSongTap,
-        onLongPress: widget.onLongPress,
-        child: Padding(
-          padding:
-              widget.barPadding ??
-              const EdgeInsetsDirectional.symmetric(
-                vertical: 10,
-                horizontal: 12,
-              ),
-          child: Row(
-            children: [
-              if (widget.rank != null) ...[
-                SizedBox(
-                  width: 28,
-                  child: Text(
-                    '${widget.rank}',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: colorScheme.primary,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
+      child: Material(
+        color: isSelected
+            ? colorScheme.secondaryContainer
+            : widget.backgroundColor ?? colorScheme.surfaceContainerLow,
+        borderRadius: widget.borderRadius,
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: isSelecting ? widget.onSelectionToggle : _handleSongTap,
+          onLongPress: widget.onLongPress,
+          child: Padding(
+            padding:
+                widget.barPadding ??
+                const EdgeInsetsDirectional.symmetric(
+                  vertical: 10,
+                  horizontal: 12,
+                ),
+            child: Row(
+              children: [
+                if (widget.rank != null) ...[
+                  SizedBox(
+                    width: 28,
+                    child: Text(
+                      '${widget.rank}',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: colorScheme.primary,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                ],
+
+                _buildAlbumArt(colorScheme),
+                const SizedBox(width: 14),
+
+                Expanded(
+                  child: ValueListenableBuilder<bool>(
+                    valueListenable: _songOfflineStatus,
+                    builder: (_, isOffline, __) => _SongInfo(
+                      title: _songTitle,
+                      artist: _songArtist,
+                      isOffline: isOffline,
+                      plays: plays,
+                      colorScheme: colorScheme,
                     ),
                   ),
                 ),
-                const SizedBox(width: 10),
+
+                if (isSelecting)
+                  Icon(
+                    isSelected
+                        ? FluentIcons.checkmark_circle_24_filled
+                        : FluentIcons.circle_24_regular,
+                    color: isSelected
+                        ? colorScheme.primary
+                        : colorScheme.onSurfaceVariant,
+                  )
+                else if (widget.onAdd != null)
+                  IconButton(
+                    padding: EdgeInsets.zero,
+                    icon: Icon(
+                      FluentIcons.add_circle_24_regular,
+                      color: colorScheme.primary,
+                    ),
+                    tooltip: context.l10n!.addToPlaylist,
+                    onPressed: widget.onAdd,
+                  )
+                else
+                  OverflowMenuButton<String>(
+                    onSelected: (value) => _handleSongMenuAction(
+                      context: context,
+                      value: value,
+                      song: widget.song,
+                      ytid: _ytid,
+                      songLikeStatus: _songLikeStatus,
+                      songOfflineStatus: _songOfflineStatus,
+                      songDownloadStatus: _songDownloadStatus,
+                      onRemove: widget.onRemove,
+                      onRename: () => _handleRenameSong(context),
+                    ),
+                    itemBuilder: (context) =>
+                        _buildMenuItems(context, colorScheme),
+                  ),
               ],
-
-              _buildAlbumArt(colorScheme),
-              const SizedBox(width: 14),
-
-              Expanded(
-                child: ValueListenableBuilder<bool>(
-                  valueListenable: _songOfflineStatus,
-                  builder: (_, isOffline, __) => _SongInfo(
-                    title: _songTitle,
-                    artist: _songArtist,
-                    isOffline: isOffline,
-                    plays: plays,
-                    colorScheme: colorScheme,
-                  ),
-                ),
-              ),
-
-              if (isSelecting)
-                Icon(
-                  isSelected
-                      ? FluentIcons.checkmark_circle_24_filled
-                      : FluentIcons.circle_24_regular,
-                  color: isSelected
-                      ? colorScheme.primary
-                      : colorScheme.onSurfaceVariant,
-                )
-              else if (widget.onAdd != null)
-                IconButton(
-                  padding: EdgeInsets.zero,
-                  icon: Icon(
-                    FluentIcons.add_circle_24_regular,
-                    color: colorScheme.primary,
-                  ),
-                  tooltip: context.l10n!.addToPlaylist,
-                  onPressed: widget.onAdd,
-                )
-              else
-                OverflowMenuButton<String>(
-                  onSelected: (value) => _handleSongMenuAction(
-                    context: context,
-                    value: value,
-                    song: widget.song,
-                    ytid: _ytid,
-                    songLikeStatus: _songLikeStatus,
-                    songOfflineStatus: _songOfflineStatus,
-                    songDownloadStatus: _songDownloadStatus,
-                    onRemove: widget.onRemove,
-                    onRename: () => _handleRenameSong(context),
-                  ),
-                  itemBuilder: (context) =>
-                      _buildMenuItems(context, colorScheme),
-                ),
-            ],
+            ),
           ),
         ),
       ),
@@ -906,10 +910,7 @@ class _ArtworkBadge extends StatelessWidget {
     return Container(
       width: 20,
       height: 20,
-      decoration: BoxDecoration(
-        color: backgroundColor,
-        shape: BoxShape.circle,
-      ),
+      decoration: BoxDecoration(color: backgroundColor, shape: BoxShape.circle),
       child: Icon(icon, size: 11, color: foregroundColor),
     );
   }

@@ -36,6 +36,7 @@ import 'package:nicofy/utilities/queue_entry_utils.dart';
 import 'package:nicofy/widgets/confirmation_dialog.dart';
 import 'package:nicofy/widgets/no_artwork_cube.dart';
 import 'package:nicofy/widgets/popup_menu_item.dart';
+import 'package:nicofy/widgets/remote_focusable.dart';
 import 'package:nicofy/widgets/remote_hold_detector.dart';
 import 'package:nicofy/widgets/song_bar.dart';
 
@@ -647,20 +648,25 @@ class QueueTile extends StatelessWidget {
                 focusNode: focusNode,
                 onPress: onTap,
                 onHold: () => onShowMenu(context),
-                child: InkWell(
-                  onTap: onTap,
-                  onLongPress: () => onShowMenu(context),
-                  focusNode: focusNode,
-                  autofocus: autofocus,
+                child: RemoteFocusFrame(
                   borderRadius: BorderRadius.circular(14),
-                  splashColor: Colors.transparent,
-                  highlightColor: colorScheme.onSurface.withValues(alpha: 0.06),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 10,
+                  child: InkWell(
+                    onTap: onTap,
+                    onLongPress: () => onShowMenu(context),
+                    focusNode: focusNode,
+                    autofocus: autofocus,
+                    borderRadius: BorderRadius.circular(14),
+                    splashColor: Colors.transparent,
+                    highlightColor: colorScheme.onSurface.withValues(
+                      alpha: 0.06,
                     ),
-                    child: _buildContent(),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 10,
+                      ),
+                      child: _buildContent(),
+                    ),
                   ),
                 ),
               ),

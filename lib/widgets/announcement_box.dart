@@ -25,6 +25,7 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:nicofy/extensions/l10n.dart';
 import 'package:nicofy/utilities/url_launcher.dart';
+import 'package:nicofy/widgets/remote_focusable.dart';
 
 class AnnouncementBox extends StatelessWidget {
   const AnnouncementBox({
@@ -45,82 +46,84 @@ class AnnouncementBox extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
-      child: Material(
-        color: colorScheme.primaryContainer,
+      child: RemoteFocusFrame(
         borderRadius: BorderRadius.circular(20),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: () => launchURL(Uri.parse(url)),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: colorScheme.primary.withValues(alpha: 0.15),
-                    shape: BoxShape.circle,
+        child: Material(
+          color: colorScheme.primaryContainer,
+          borderRadius: BorderRadius.circular(20),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: () => launchURL(Uri.parse(url)),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: colorScheme.primary.withValues(alpha: 0.15),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      icon,
+                      color: colorScheme.onPrimaryContainer,
+                      size: 24,
+                    ),
                   ),
-                  child: Icon(
-                    icon,
-                    color: colorScheme.onPrimaryContainer,
-                    size: 24,
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        message,
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 15,
-                          color: colorScheme.onPrimaryContainer,
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          message,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 15,
+                            color: colorScheme.onPrimaryContainer,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 2,
                         ),
-                        overflow: TextOverflow.ellipsis,
-                        maxLines: 2,
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Text(
-                            context.l10n!.tapToView,
-                            style: TextStyle(
-                              fontSize: 12,
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Text(
+                              context.l10n!.tapToView,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: colorScheme.onPrimaryContainer
+                                    .withValues(alpha: 0.7),
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Icon(
+                              FluentIcons.arrow_right_16_regular,
+                              size: 12,
                               color: colorScheme.onPrimaryContainer.withValues(
                                 alpha: 0.7,
                               ),
                             ),
-                          ),
-                          const SizedBox(width: 4),
-                          Icon(
-                            FluentIcons.arrow_right_16_regular,
-                            size: 12,
-                            color: colorScheme.onPrimaryContainer.withValues(
-                              alpha: 0.7,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                if (onDismiss != null)
-                  IconButton(
-                    icon: Icon(
-                      FluentIcons.dismiss_circle_24_regular,
-                      color: colorScheme.onPrimaryContainer.withValues(
-                        alpha: 0.7,
-                      ),
-                    ),
-                    onPressed: onDismiss,
-                    style: IconButton.styleFrom(
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ],
+                        ),
+                      ],
                     ),
                   ),
-              ],
+                  if (onDismiss != null)
+                    IconButton(
+                      icon: Icon(
+                        FluentIcons.dismiss_circle_24_regular,
+                        color: colorScheme.onPrimaryContainer.withValues(
+                          alpha: 0.7,
+                        ),
+                      ),
+                      onPressed: onDismiss,
+                      style: IconButton.styleFrom(
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                    ),
+                ],
+              ),
             ),
           ),
         ),

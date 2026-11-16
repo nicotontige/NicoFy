@@ -26,6 +26,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:nicofy/extensions/l10n.dart';
 import 'package:nicofy/services/artist_service.dart';
 import 'package:nicofy/utilities/artwork_provider.dart';
+import 'package:nicofy/widgets/remote_focusable.dart';
 
 class ArtistBar extends StatelessWidget {
   const ArtistBar({
@@ -47,50 +48,53 @@ class ArtistBar extends StatelessWidget {
     );
     final image = normalizeArtistThumbnailUrl(artist['image']?.toString());
 
-    return Material(
-      color: colorScheme.surfaceContainerLow,
+    return RemoteFocusFrame(
       borderRadius: borderRadius,
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
-          child: Row(
-            children: [
-              _ArtistArtwork(image: image),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      title,
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 15,
-                        color: colorScheme.onSurface,
+      child: Material(
+        color: colorScheme.surfaceContainerLow,
+        borderRadius: borderRadius,
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
+            child: Row(
+              children: [
+                _ArtistArtwork(image: image),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        title,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 15,
+                          color: colorScheme.onSurface,
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      context.l10n!.artist,
-                      style: TextStyle(
-                        color: colorScheme.onSurfaceVariant,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
+                      const SizedBox(height: 3),
+                      Text(
+                        context.l10n!.artist,
+                        style: TextStyle(
+                          color: colorScheme.onSurfaceVariant,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-              Icon(
-                FluentIcons.chevron_right_24_regular,
-                color: colorScheme.onSurfaceVariant,
-                size: 20,
-              ),
-            ],
+                Icon(
+                  FluentIcons.chevron_right_24_regular,
+                  color: colorScheme.onSurfaceVariant,
+                  size: 20,
+                ),
+              ],
+            ),
           ),
         ),
       ),

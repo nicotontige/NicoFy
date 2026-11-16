@@ -50,6 +50,7 @@ import 'package:nicofy/widgets/bottom_sheet_bar.dart';
 import 'package:nicofy/widgets/confirmation_dialog.dart';
 import 'package:nicofy/widgets/custom_bar.dart';
 import 'package:nicofy/widgets/mini_player_bottom_space.dart';
+import 'package:nicofy/widgets/remote_focusable.dart';
 import 'package:nicofy/widgets/section_header.dart';
 import 'package:nicofy/widgets/shapes/four_sided_cookie_shape.dart';
 
@@ -519,36 +520,39 @@ class SettingsPage extends StatelessWidget {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          child: InkWell(
-            onTap: () =>
-                launchURL(Uri.parse('https://buymeacoffee.com/nicotontige')),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
-              child: Row(
-                children: [
-                  FourSidedCookieShape(
-                    size: 44,
-                    color: colorScheme.onPrimaryContainer.withValues(
-                      alpha: 0.14,
-                    ),
-                    child: Icon(
-                      FluentIcons.heart_24_filled,
-                      color: colorScheme.onPrimaryContainer,
-                      size: 24,
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Text(
-                      context.l10n!.sponsorProject,
-                      style: TextStyle(
+          child: RemoteFocusFrame(
+            borderRadius: BorderRadius.circular(16),
+            child: InkWell(
+              onTap: () =>
+                  launchURL(Uri.parse('https://buymeacoffee.com/nicotontige')),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
+                child: Row(
+                  children: [
+                    FourSidedCookieShape(
+                      size: 44,
+                      color: colorScheme.onPrimaryContainer.withValues(
+                        alpha: 0.14,
+                      ),
+                      child: Icon(
+                        FluentIcons.heart_24_filled,
                         color: colorScheme.onPrimaryContainer,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
+                        size: 24,
                       ),
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Text(
+                        context.l10n!.sponsorProject,
+                        style: TextStyle(
+                          color: colorScheme.onPrimaryContainer,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -616,29 +620,32 @@ class SettingsPage extends StatelessWidget {
             final color = availableColors[index];
             final isSelected = color == primaryColorSetting;
 
-            return InkWell(
-              customBorder: const CircleBorder(),
-              onTap: () => _selectAccentColor(context, color),
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: color,
-                  shape: BoxShape.circle,
-                  border: isSelected
-                      ? Border.all(
-                          color: Theme.of(context).colorScheme.onSurface,
-                          width: 3,
+            return RemoteFocusFrame(
+              circle: true,
+              child: InkWell(
+                customBorder: const CircleBorder(),
+                onTap: () => _selectAccentColor(context, color),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: color,
+                    shape: BoxShape.circle,
+                    border: isSelected
+                        ? Border.all(
+                            color: Theme.of(context).colorScheme.onSurface,
+                            width: 3,
+                          )
+                        : null,
+                  ),
+                  child: isSelected
+                      ? Icon(
+                          FluentIcons.checkmark_20_filled,
+                          color: color.computeLuminance() > 0.5
+                              ? Colors.black
+                              : Colors.white,
+                          size: 20,
                         )
                       : null,
                 ),
-                child: isSelected
-                    ? Icon(
-                        FluentIcons.checkmark_20_filled,
-                        color: color.computeLuminance() > 0.5
-                            ? Colors.black
-                            : Colors.white,
-                        size: 20,
-                      )
-                    : null,
               ),
             );
           },
@@ -666,26 +673,31 @@ class SettingsPage extends StatelessWidget {
             final color = availableColors[index];
             final isSelected = color == primaryColorSetting;
 
-            return GestureDetector(
-              onTap: () => _selectAccentColor(context, color),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                decoration: BoxDecoration(
-                  color: color,
-                  shape: BoxShape.circle,
-                  border: isSelected
-                      ? Border.all(color: colorScheme.onSurface, width: 3)
+            // An ink well rather than a bare gesture, so a remote reaches it.
+            return RemoteFocusFrame(
+              circle: true,
+              child: InkWell(
+                customBorder: const CircleBorder(),
+                onTap: () => _selectAccentColor(context, color),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  decoration: BoxDecoration(
+                    color: color,
+                    shape: BoxShape.circle,
+                    border: isSelected
+                        ? Border.all(color: colorScheme.onSurface, width: 3)
+                        : null,
+                  ),
+                  child: isSelected
+                      ? Icon(
+                          FluentIcons.checkmark_20_filled,
+                          color: color.computeLuminance() > 0.5
+                              ? Colors.black
+                              : Colors.white,
+                          size: 24,
+                        )
                       : null,
                 ),
-                child: isSelected
-                    ? Icon(
-                        FluentIcons.checkmark_20_filled,
-                        color: color.computeLuminance() > 0.5
-                            ? Colors.black
-                            : Colors.white,
-                        size: 24,
-                      )
-                    : null,
               ),
             );
           },

@@ -32,6 +32,7 @@ import 'package:nicofy/models/song_chapter.dart';
 import 'package:nicofy/services/chapters_service.dart';
 import 'package:nicofy/utilities/flutter_bottom_sheet.dart';
 import 'package:nicofy/utilities/formatter.dart';
+import 'package:nicofy/widgets/remote_focusable.dart';
 
 /// Steps through the tracks of a long video, and names the one being played.
 ///
@@ -79,38 +80,43 @@ class ChapterBar extends StatelessWidget {
             colorScheme: colorScheme,
           ),
           Expanded(
-            child: InkWell(
-              borderRadius: BorderRadius.circular(12),
-              onTap: () => showCustomBottomSheet(
-                context,
-                ChapterListView(chapters: chapters),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      '${index + 1}/${chapters.length}',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: colorScheme.primary,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Flexible(
-                      child: Text(
-                        chapterLabel(chapters.chapters[index]),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+            child: RemoteFocusFrame(
+              child: InkWell(
+                borderRadius: BorderRadius.circular(12),
+                onTap: () => showCustomBottomSheet(
+                  context,
+                  ChapterListView(chapters: chapters),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 6,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        '${index + 1}/${chapters.length}',
                         style: TextStyle(
                           fontSize: 13,
-                          color: colorScheme.onSurfaceVariant,
+                          fontWeight: FontWeight.w600,
+                          color: colorScheme.primary,
                         ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Text(
+                          chapterLabel(chapters.chapters[index]),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),

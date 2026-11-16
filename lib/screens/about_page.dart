@@ -28,6 +28,7 @@ import 'package:nicofy/constants/version.dart';
 import 'package:nicofy/extensions/l10n.dart';
 import 'package:nicofy/utilities/url_launcher.dart';
 import 'package:nicofy/widgets/mini_player_bottom_space.dart';
+import 'package:nicofy/widgets/remote_focusable.dart';
 
 class AboutPage extends StatelessWidget {
   const AboutPage({super.key});
@@ -190,19 +191,22 @@ class _SocialButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    return Material(
-      color: colorScheme.primaryContainer,
+    return RemoteFocusFrame(
       borderRadius: BorderRadius.circular(12),
-      child: InkWell(
-        onTap: onPressed,
+      child: Material(
+        color: colorScheme.primaryContainer,
         borderRadius: BorderRadius.circular(12),
-        child: Tooltip(
-          message: tooltip,
-          child: Container(
-            width: 40,
-            height: 40,
-            alignment: Alignment.center,
-            child: Icon(icon, size: 20, color: colorScheme.primary),
+        child: InkWell(
+          onTap: onPressed,
+          borderRadius: BorderRadius.circular(12),
+          child: Tooltip(
+            message: tooltip,
+            child: Container(
+              width: 40,
+              height: 40,
+              alignment: Alignment.center,
+              child: Icon(icon, size: 20, color: colorScheme.primary),
+            ),
           ),
         ),
       ),

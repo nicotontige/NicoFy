@@ -23,6 +23,7 @@
 
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:nicofy/widgets/remote_focusable.dart';
 
 class BottomSheetBar extends StatelessWidget {
   const BottomSheetBar(
@@ -49,55 +50,58 @@ class BottomSheetBar extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-      child: Material(
-        color: bgColor,
+      child: RemoteFocusFrame(
         borderRadius: BorderRadius.circular(16),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            child: Row(
-              children: [
-                if (icon != null) ...[
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? colorScheme.onSecondaryContainer.withValues(
-                              alpha: 0.12,
-                            )
-                          : colorScheme.onSurfaceVariant.withValues(
-                              alpha: 0.08,
-                            ),
-                      borderRadius: BorderRadius.circular(10),
+        child: Material(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(16),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: onTap,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              child: Row(
+                children: [
+                  if (icon != null) ...[
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: isSelected
+                            ? colorScheme.onSecondaryContainer.withValues(
+                                alpha: 0.12,
+                              )
+                            : colorScheme.onSurfaceVariant.withValues(
+                                alpha: 0.08,
+                              ),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(icon, size: 20, color: fgColor),
                     ),
-                    child: Icon(icon, size: 20, color: fgColor),
-                  ),
-                  const SizedBox(width: 14),
-                ],
-                Expanded(
-                  child: Text(
-                    title,
-                    style: TextStyle(
-                      color: fgColor,
-                      fontSize: 15,
-                      fontWeight: isSelected
-                          ? FontWeight.w600
-                          : FontWeight.w500,
+                    const SizedBox(width: 14),
+                  ],
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: TextStyle(
+                        color: fgColor,
+                        fontSize: 15,
+                        fontWeight: isSelected
+                            ? FontWeight.w600
+                            : FontWeight.w500,
+                      ),
                     ),
                   ),
-                ),
-                if (isSelected) ...[
-                  const SizedBox(width: 8),
-                  Icon(
-                    FluentIcons.checkmark_circle_24_regular,
-                    color: colorScheme.onSecondaryContainer,
-                    size: 22,
-                  ),
+                  if (isSelected) ...[
+                    const SizedBox(width: 8),
+                    Icon(
+                      FluentIcons.checkmark_circle_24_regular,
+                      color: colorScheme.onSecondaryContainer,
+                      size: 22,
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
         ),

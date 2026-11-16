@@ -53,6 +53,7 @@ import 'package:nicofy/services/stream_buffer_service.dart';
 import 'package:nicofy/services/update_manager.dart';
 import 'package:nicofy/services/windows_media_controls.dart';
 import 'package:nicofy/theme/app_themes.dart';
+import 'package:nicofy/theme/remote_focus_theme.dart';
 import 'package:nicofy/utilities/device_identity.dart';
 import 'package:nicofy/utilities/flutter_toast.dart';
 import 'package:nicofy/utilities/language_utils.dart';
@@ -128,11 +129,29 @@ class _NicoFyState extends State<NicoFy> with WidgetsBindingObserver {
     });
   }
 
+  /// Focus is drawn the remote way once a remote or a keyboard drives the
+  /// app, see [withRemoteFocusStyle]; a finger keeps the touch theme.
+  bool _remoteFocusStyle = usesRemoteFocusStyle(
+    FocusManager.instance.highlightMode,
+  );
+
+  void _onHighlightModeChanged(FocusHighlightMode mode) {
+    final remoteFocusStyle = usesRemoteFocusStyle(mode);
+    if (remoteFocusStyle == _remoteFocusStyle || !mounted) return;
+    setState(() => _remoteFocusStyle = remoteFocusStyle);
+  }
+
+  ThemeData _theme(ColorScheme colorScheme) {
+    final theme = getAppTheme(colorScheme);
+    return _remoteFocusStyle ? withRemoteFocusStyle(theme) : theme;
+  }
+
   @override
   void initState() {
     super.initState();
 
     WidgetsBinding.instance.addObserver(this);
+    FocusManager.instance.addHighlightModeListener(_onHighlightModeChanged);
 
     if (isMobilePlatform) {
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
@@ -242,6 +261,7 @@ class _NicoFyState extends State<NicoFy> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    FocusManager.instance.removeHighlightModeListener(_onHighlightModeChanged);
     offlineMode.removeListener(_onOfflineModeChanged);
     PlatformDispatcher.instance.onPlatformBrightnessChanged = null;
 
@@ -288,8 +308,8 @@ class _NicoFyState extends State<NicoFy> with WidgetsBindingObserver {
           ),
           child: MaterialApp.router(
             themeMode: themeMode,
-            darkTheme: getAppTheme(colorScheme),
-            theme: getAppTheme(colorScheme),
+            darkTheme: _theme(colorScheme),
+            theme: _theme(colorScheme),
             localizationsDelegates: [
               AppLocalizations.delegate,
               ...GlobalMaterialLocalizations.delegates,
