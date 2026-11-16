@@ -405,10 +405,17 @@ class NicoFyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
     final song = currentSong;
     if (song == null) return;
 
+    // Until the song a restored queue stopped on is loaded again, the player
+    // has nothing in it and reports zero. Saving that would lose the place
+    // the restore is still waiting to resume at: opening the app and leaving
+    // it, or the car stopping the session before anything played, was enough
+    // for the next launch to start the song over from its beginning.
+    final pendingPosition = _restoredPositionFor(song);
+
     queuePersistenceService.savePosition(
       _currentQueueIndex,
       _queueEntryIds.ensureId(song),
-      position,
+      pendingPosition ?? position,
       force: force,
     );
   }
@@ -452,16 +459,21 @@ class NicoFyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
     }
   }
 
-  /// The position a restored queue resumes at, given out once and only for the
-  /// song it was saved on. Every other song starts from its beginning.
-  Duration? _consumeRestoredPosition(Map song) {
+  /// The position a restored queue resumes at, only for the song it was saved
+  /// on. Every other song starts from its beginning.
+  Duration? _restoredPositionFor(Map song) {
     final position = _restoredPosition;
     final entryId = _restoredPositionEntryId;
-    _restoredPosition = null;
-    _restoredPositionEntryId = null;
-
     if (position == null || entryId == null) return null;
     return song['queueEntryId']?.toString() == entryId ? position : null;
+  }
+
+  /// Called once a song is actually loaded. Until then the restored position
+  /// is kept: a first attempt that fails or is overtaken must not use it up,
+  /// or the attempt that does load the song starts it from zero.
+  void _clearRestoredPosition() {
+    _restoredPosition = null;
+    _restoredPositionEntryId = null;
   }
 
   void _hydrateQueueEntryIds() {
@@ -2310,16 +2322,20 @@ class NicoFyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
         return false;
       }
 
-      return await _setAudioSourceAndPlay(
+      final started = await _setAudioSourceAndPlay(
         songData,
         audioSource,
         playback.songUrl,
         playback.isOffline,
         mediaId: mediaId,
         transitionId: transitionId,
-        initialPosition: _consumeRestoredPosition(songData),
+        initialPosition: _restoredPositionFor(songData),
         playWhenReady: playWhenReady,
       );
+      // Whichever song got loaded, the place a restored queue stopped at has
+      // served its purpose: it either was resumed at or was played past.
+      if (started) _clearRestoredPosition();
+      return started;
     } catch (e, stackTrace) {
       logger.log('Error playing song', error: e, stackTrace: stackTrace);
       _failures.lastError = e.toString();
