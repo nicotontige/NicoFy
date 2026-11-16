@@ -21,6 +21,8 @@
  *     https://github.com/nicotontige/NicoFy
  */
 
+import 'dart:async';
+
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
@@ -31,9 +33,11 @@ import 'package:nicofy/main.dart';
 import 'package:nicofy/screens/now_playing_page.dart';
 import 'package:nicofy/services/remote_control/remote_control_controller.dart';
 import 'package:nicofy/services/settings_manager.dart';
+import 'package:nicofy/utilities/device_identity.dart';
 import 'package:nicofy/utilities/flutter_bottom_sheet.dart'
     show closeCurrentBottomSheet, isBottomSheetOpen;
 import 'package:nicofy/widgets/mini_player.dart';
+import 'package:nicofy/widgets/now_playing/tv_remote.dart';
 import 'package:nicofy/widgets/remote_control/remote_mini_player.dart';
 
 class BottomNavigationPage extends StatefulWidget {
@@ -60,10 +64,68 @@ class _BottomNavigationPageState extends State<BottomNavigationPage> {
   /// Not a branch: the rail entry that opens the now-playing screen.
   static const _nowPlayingShellIndex = -1;
 
+  /// How long a TV waits without a key pressed, while music plays, before
+  /// it shows the now-playing screen in its ambient form.
+  static const tvIdleDelay = Duration(seconds: 60);
+
+  TvIdleWatcher? _idleWatcher;
+  StreamSubscription<bool>? _playingSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    if (isTelevision) {
+      _idleWatcher = TvIdleWatcher(
+        delay: tvIdleDelay,
+        isPlaying: () => audioHandler.playbackState.value.playing,
+        onIdle: _onTvIdle,
+      )..start();
+      // Started again from a phone or by voice: the minute starts then.
+      _playingSubscription = audioHandler.playbackState
+          .map((state) => state.playing)
+          .distinct()
+          .where((playing) => playing)
+          .listen((_) => _idleWatcher?.restart());
+    }
+  }
+
   @override
   void dispose() {
+    _idleWatcher?.dispose();
+    unawaited(_playingSubscription?.cancel());
     _railFocusNode.dispose();
     super.dispose();
+  }
+
+  void _onTvIdle() {
+    if (!mounted) return;
+    // Already open, maybe under a sheet or a dialog: it decides for itself.
+    if (NowPlayingPage.isOpen) {
+      NowPlayingPage.showAmbientIfOnTop();
+      return;
+    }
+    if (_isBusy()) return;
+    openNowPlaying(context, ambient: true);
+  }
+
+  /// Whether the screen is in use in a way the ambient screen must not
+  /// interrupt, even after a minute without a key.
+  bool _isBusy() {
+    // In the background, the screen is not ours to take.
+    if (WidgetsBinding.instance.lifecycleState != AppLifecycleState.resumed) {
+      return true;
+    }
+    // A dialog (the pairing PIN among them), a menu or a page over the rail.
+    if (!(ModalRoute.of(context)?.isCurrent ?? false)) return true;
+    if (isBottomSheetOpen.value) return true;
+    // Driving another device: nothing plays here.
+    if (RemoteControlController.instance.state.value != null) return true;
+    // A text field being typed into, or the on-screen keyboard up.
+    if (MediaQuery.viewInsetsOf(context).bottom > 0) return true;
+    final focusContext = FocusManager.instance.primaryFocus?.context;
+    return focusContext != null &&
+        (focusContext.widget is EditableText ||
+            focusContext.findAncestorWidgetOfExactType<EditableText>() != null);
   }
 
   @override
