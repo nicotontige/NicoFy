@@ -18,6 +18,55 @@ void main() {
     });
   });
 
+  group('upcomingQueueStart', () {
+    test('starts the list at the song playing', () {
+      expect(upcomingQueueStart(0, 5), 0);
+      expect(upcomingQueueStart(3, 5), 3);
+      expect(upcomingQueueStart(4, 5), 4);
+    });
+
+    test('lists the whole queue when no song is playing', () {
+      expect(upcomingQueueStart(-1, 5), 0);
+      expect(upcomingQueueStart(5, 5), 0);
+      expect(upcomingQueueStart(0, 0), 0);
+    });
+  });
+
+  group('queueIndexForUpcomingDrop', () {
+    test('offsets the list position by the songs already played', () {
+      expect(
+        queueIndexForUpcomingDrop(
+          start: 3,
+          viewIndex: 2,
+          startsWithCurrentSong: true,
+        ),
+        5,
+      );
+    });
+
+    test('never drops a song above the one playing', () {
+      expect(
+        queueIndexForUpcomingDrop(
+          start: 3,
+          viewIndex: 0,
+          startsWithCurrentSong: true,
+        ),
+        4,
+      );
+    });
+
+    test('allows the top when nothing is playing', () {
+      expect(
+        queueIndexForUpcomingDrop(
+          start: 0,
+          viewIndex: 0,
+          startsWithCurrentSong: false,
+        ),
+        0,
+      );
+    });
+  });
+
   group('appendedQueueIndexForSourceIndex', () {
     test('accounts for existing queue entries', () {
       expect(

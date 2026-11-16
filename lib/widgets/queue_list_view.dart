@@ -30,9 +30,21 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:nicofy/extensions/l10n.dart';
 import 'package:nicofy/main.dart';
+import 'package:nicofy/services/router_service.dart';
+import 'package:nicofy/utilities/flutter_bottom_sheet.dart';
+import 'package:nicofy/utilities/queue_entry_utils.dart';
 import 'package:nicofy/widgets/confirmation_dialog.dart';
 import 'package:nicofy/widgets/no_artwork_cube.dart';
+import 'package:nicofy/widgets/popup_menu_item.dart';
+import 'package:nicofy/widgets/remote_hold_detector.dart';
+import 'package:nicofy/widgets/song_bar.dart';
 
+/// The songs still to come: the one playing, at the top, and those after it.
+///
+/// The songs already played stay in the queue, so that back plays them again,
+/// but are not listed. Every list position therefore maps to a queue index
+/// offset by the index of the song playing; anything that talks to the audio
+/// handler converts first.
 class QueueWidget extends StatefulWidget {
   const QueueWidget({
     super.key,
@@ -42,7 +54,7 @@ class QueueWidget extends StatefulWidget {
 
   final bool isBottomSheet;
 
-  /// Starts a TV remote on the current song rather than at the top.
+  /// Puts a TV remote on the current song as soon as the queue shows.
   final bool focusCurrentSong;
 
   @override
@@ -50,53 +62,51 @@ class QueueWidget extends StatefulWidget {
 }
 
 class _QueueWidgetState extends State<QueueWidget> {
+  /// The whole queue, played songs included, indexed like the audio handler.
   List<Map> _queue = [];
   late StreamSubscription<List<Map>> _subscription;
   late StreamSubscription<MediaItem?> _mediaSubscription;
   bool _isDismissing = false;
-  bool _hasScrolledToInitial = false;
+  bool _hasFocusedInitially = false;
   final ScrollController _scrollController = ScrollController();
+
+  /// One per tile, so that focus can be put back on a tile after the list
+  /// changed under it.
+  final Map<String, FocusNode> _tileFocusNodes = {};
+
+  /// Queue index of the first song listed.
+  int get _start =>
+      upcomingQueueStart(audioHandler.currentQueueIndex, _queue.length);
+
+  bool get _startsWithCurrentSong {
+    final currentIndex = audioHandler.currentQueueIndex;
+    return currentIndex >= 0 && currentIndex < _queue.length;
+  }
+
+  int get _visibleCount => _queue.length - _start;
 
   @override
   void initState() {
     super.initState();
     _subscription = audioHandler.queueAsMapStream.listen((queue) {
       if (mounted && !_isDismissing) {
-        setState(() {
-          _queue = List<Map>.from(queue);
-        });
-        if (!_hasScrolledToInitial && queue.isNotEmpty) {
-          _hasScrolledToInitial = true;
-          _scrollToCurrentSong();
+        _updateKeepingFocus(() => _queue = List<Map>.from(queue));
+        if (widget.focusCurrentSong &&
+            !_hasFocusedInitially &&
+            queue.isNotEmpty) {
+          _hasFocusedInitially = true;
+          WidgetsBinding.instance.addPostFrameCallback(
+            (_) => _focusViewIndex(0),
+          );
         }
       }
     });
-    // listen to mediaItem changes UI reflects current song accurately.
+    // A new song moves the top of the list, even when the queue is unchanged.
     _mediaSubscription = audioHandler.mediaItem
         .distinct((prev, next) => prev?.id == next?.id)
         .listen((_) {
-          if (mounted && !_isDismissing) setState(() {});
+          if (mounted && !_isDismissing) _updateKeepingFocus(() {});
         });
-  }
-
-  void _scrollToCurrentSong() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!_scrollController.hasClients) return;
-      final currentIndex = audioHandler.currentQueueIndex;
-      if (currentIndex <= 0) return;
-      const estimatedItemHeight = 68.0;
-      const topPadding = 4.0;
-      final targetOffset = currentIndex * estimatedItemHeight + topPadding;
-      final clampedOffset = targetOffset.clamp(
-        0.0,
-        _scrollController.position.maxScrollExtent,
-      );
-      _scrollController.animateTo(
-        clampedOffset,
-        duration: const Duration(milliseconds: 350),
-        curve: Curves.easeOut,
-      );
-    });
   }
 
   @override
@@ -104,21 +114,88 @@ class _QueueWidgetState extends State<QueueWidget> {
     _subscription.cancel();
     _mediaSubscription.cancel();
     _scrollController.dispose();
+    for (final node in _tileFocusNodes.values) {
+      node.dispose();
+    }
     super.dispose();
+  }
+
+  /// Applies [change], then, if it took away the tile a TV remote was on (the
+  /// song that just ended, a song removed), focuses the tile now in its place
+  /// rather than leaving the remote nowhere.
+  void _updateKeepingFocus(VoidCallback change) {
+    final focusedViewIndex = _focusedViewIndex();
+    setState(change);
+    if (focusedViewIndex == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _focusedViewIndex() == null) {
+        _focusViewIndex(focusedViewIndex);
+      }
+    });
+  }
+
+  int? _focusedViewIndex() {
+    final start = _start;
+    for (var index = start; index < _queue.length; index++) {
+      final node = _tileFocusNodes[_queueEntryKey(_queue[index], index)];
+      if (node != null && node.hasFocus) return index - start;
+    }
+    return null;
+  }
+
+  void _focusViewIndex(int viewIndex, {bool retry = true}) {
+    if (!mounted || _visibleCount <= 0) return;
+    final clamped = viewIndex.clamp(0, _visibleCount - 1);
+    final index = _start + clamped;
+    final node = _tileFocusNodes[_queueEntryKey(_queue[index], index)];
+    final nodeContext = node?.context;
+    if (node != null && nodeContext != null) {
+      node.requestFocus();
+      Scrollable.ensureVisible(nodeContext, alignment: 0.1);
+      return;
+    }
+    // Not built yet: the list is scrolled away from it. Only the top is
+    // worth scrolling back to.
+    if (retry && clamped == 0 && _scrollController.hasClients) {
+      _scrollController.jumpTo(0);
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _focusViewIndex(0, retry: false),
+      );
+    }
+  }
+
+  FocusNode _focusNodeFor(String key) =>
+      _tileFocusNodes.putIfAbsent(key, FocusNode.new);
+
+  /// Drops the focus nodes of songs no longer in the queue, once their tiles
+  /// are gone.
+  void _pruneFocusNodes() {
+    final keys = {
+      for (var index = 0; index < _queue.length; index++)
+        _queueEntryKey(_queue[index], index),
+    };
+    final stale = _tileFocusNodes.keys.where((k) => !keys.contains(k)).toList();
+    if (stale.isEmpty) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      for (final key in stale) {
+        if (keys.contains(key)) continue;
+        _tileFocusNodes.remove(key)?.dispose();
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
-    final currentIndex = audioHandler.currentQueueIndex;
+    _pruneFocusNodes();
 
     if (widget.isBottomSheet) {
       return Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           _buildHeader(context, colorScheme, textTheme, compact: true),
-          _buildBottomSheetContent(context, colorScheme, currentIndex),
+          _buildBottomSheetContent(context, colorScheme),
         ],
       );
     }
@@ -136,7 +213,7 @@ class _QueueWidgetState extends State<QueueWidget> {
         Expanded(
           child: _queue.isEmpty
               ? _buildEmptyState(context, colorScheme, textTheme)
-              : _buildList(context, colorScheme, currentIndex),
+              : _buildList(context, colorScheme),
         ),
       ],
     );
@@ -158,15 +235,15 @@ class _QueueWidgetState extends State<QueueWidget> {
   void _confirmClearQueue(BuildContext context) {
     showDialog<void>(
       context: context,
-      builder: (_) => ConfirmationDialog(
+      builder: (dialogContext) => ConfirmationDialog(
         confirmationMessage: context.l10n!.clearQueueQuestion,
         submitMessage: context.l10n!.clear,
         isDangerous: true,
-        onCancel: () => Navigator.pop(context),
+        onCancel: () => Navigator.pop(dialogContext),
         onSubmit: () {
-          Navigator.pop(context);
+          Navigator.pop(dialogContext);
           audioHandler.clearQueue();
-          if (widget.isBottomSheet) Navigator.pop(context);
+          if (widget.isBottomSheet) closeCurrentBottomSheet();
         },
       ),
     );
@@ -178,6 +255,7 @@ class _QueueWidgetState extends State<QueueWidget> {
     TextTheme textTheme, {
     required bool compact,
   }) {
+    final upcomingCount = _visibleCount;
     return Padding(
       padding: compact
           ? const EdgeInsets.only(left: 10, right: 8, bottom: 12)
@@ -214,9 +292,9 @@ class _QueueWidgetState extends State<QueueWidget> {
                           fontWeight: FontWeight.w600,
                         ),
                 ),
-                if (_queue.isNotEmpty)
+                if (upcomingCount > 0)
                   Text(
-                    '${_queue.length} ${context.l10n!.songs.toLowerCase()}',
+                    '$upcomingCount ${context.l10n!.songs.toLowerCase()}',
                     style: compact
                         ? TextStyle(
                             color: colorScheme.onSurfaceVariant,
@@ -259,7 +337,6 @@ class _QueueWidgetState extends State<QueueWidget> {
   Widget _buildBottomSheetContent(
     BuildContext context,
     ColorScheme colorScheme,
-    int currentIndex,
   ) {
     if (_queue.isEmpty) {
       return Padding(
@@ -272,7 +349,7 @@ class _QueueWidgetState extends State<QueueWidget> {
     }
     return SizedBox(
       height: MediaQuery.sizeOf(context).height * 0.52,
-      child: _buildList(context, colorScheme, currentIndex, closeOnTap: true),
+      child: _buildList(context, colorScheme, closeOnTap: true),
     );
   }
 
@@ -313,40 +390,60 @@ class _QueueWidgetState extends State<QueueWidget> {
     );
   }
 
+  /// Stable across the song changes and removals that shift queue indexes,
+  /// so a tile keeps its state, and its focus, while the list moves.
   String _queueEntryKey(Map song, int index) {
-    final entryId = song['queueEntryId']?.toString() ?? song['ytid'];
-    return '${entryId}_$index';
+    final entryId = song['queueEntryId']?.toString();
+    if (entryId != null && entryId.isNotEmpty) return entryId;
+    return '${song['ytid']}_$index';
+  }
+
+  int _queueIndexOfKey(String key) {
+    for (var index = 0; index < _queue.length; index++) {
+      if (_queueEntryKey(_queue[index], index) == key) return index;
+    }
+    return -1;
+  }
+
+  void _onReorder(int oldViewIndex, int newViewIndex) {
+    final start = _start;
+    final pinned = _startsWithCurrentSong;
+    // The song playing has no handle; nothing moves it from here.
+    if (pinned && oldViewIndex == 0) return;
+
+    final oldIndex = start + oldViewIndex;
+    final newIndex = queueIndexForUpcomingDrop(
+      start: start,
+      viewIndex: newViewIndex,
+      startsWithCurrentSong: pinned,
+    );
+    if (oldIndex == newIndex || oldIndex >= _queue.length) return;
+
+    final movingId = _queue[oldIndex]['queueEntryId']?.toString();
+    setState(() {
+      final item = _queue.removeAt(oldIndex);
+      _queue.insert(newIndex.clamp(0, _queue.length), item);
+    });
+    if (movingId != null) audioHandler.reorderQueueById(movingId, newIndex);
   }
 
   Widget _buildList(
     BuildContext context,
-    ColorScheme colorScheme,
-    int currentIndex, {
+    ColorScheme colorScheme, {
     bool closeOnTap = false,
   }) {
+    final start = _start;
+    final pinned = _startsWithCurrentSong;
+    // A remote cannot drag, swipe nor long-press with a finger: big screens
+    // get a button to the song menu, which holding select opens too.
+    final showMoreButton = MediaQuery.sizeOf(context).width >= 600;
+
     return ReorderableListView.builder(
       scrollController: _scrollController,
       buildDefaultDragHandles: false,
       padding: const EdgeInsets.only(top: 4, bottom: 24, left: 8, right: 8),
-      itemCount: _queue.length,
-      onReorderItem: (oldIndex, newIndex) {
-        final movingId =
-            _queue[oldIndex]['queueEntryId']?.toString() ??
-            'legacy_${_queue[oldIndex]['ytid']}_$oldIndex';
-
-        setState(() {
-          final item = _queue.removeAt(oldIndex);
-          var insertIndex = newIndex;
-          if (insertIndex < 0) insertIndex = 0;
-          if (insertIndex > _queue.length) insertIndex = _queue.length;
-          _queue.insert(insertIndex, item);
-        });
-
-        final actualIndex = _queue.indexWhere(
-          (item) => item['queueEntryId']?.toString() == movingId,
-        );
-        audioHandler.reorderQueueById(movingId, actualIndex);
-      },
+      itemCount: _visibleCount,
+      onReorderItem: _onReorder,
       proxyDecorator: (child, index, animation) => Material(
         elevation: 8,
         color: colorScheme.surfaceContainerHigh,
@@ -354,32 +451,40 @@ class _QueueWidgetState extends State<QueueWidget> {
         shadowColor: colorScheme.shadow.withValues(alpha: 0.35),
         child: child,
       ),
-      itemBuilder: (context, index) {
+      itemBuilder: (context, viewIndex) {
+        final index = start + viewIndex;
         final song = _queue[index];
-        final isCurrentSong = index == currentIndex;
+        final isCurrentSong = pinned && viewIndex == 0;
         final queueEntryId = _queueEntryKey(song, index);
         return QueueTile(
           key: ValueKey(queueEntryId),
           song: song,
-          index: index,
+          index: viewIndex,
           queueEntryId: queueEntryId,
           isCurrentSong: isCurrentSong,
+          canReorder: !isCurrentSong,
           autofocus: isCurrentSong && widget.focusCurrentSong,
+          focusNode: _focusNodeFor(queueEntryId),
           colorScheme: colorScheme,
+          showMoreButton: showMoreButton,
           onTap: () {
-            audioHandler.skipToSong(index);
-            if (closeOnTap) Navigator.pop(context);
+            final actualIndex = _queueIndexOfKey(queueEntryId);
+            if (actualIndex == -1) return;
+            audioHandler.skipToSong(actualIndex);
+            if (closeOnTap) closeCurrentBottomSheet();
           },
+          onShowMenu: (tileContext) =>
+              _showSongMenu(tileContext, song, queueEntryId),
           confirmDismiss: (_) async {
             _isDismissing = true;
             return true;
           },
           onDismissed: () {
-            final actualIndex = _queue.indexWhere(
-              (item) =>
-                  _queueEntryKey(item, _queue.indexOf(item)) == queueEntryId,
-            );
-            if (actualIndex == -1) return;
+            final actualIndex = _queueIndexOfKey(queueEntryId);
+            if (actualIndex == -1) {
+              _isDismissing = false;
+              return;
+            }
             setState(() {
               _isDismissing = false;
               _queue.removeAt(actualIndex);
@@ -388,6 +493,91 @@ class _QueueWidgetState extends State<QueueWidget> {
           },
         );
       },
+    );
+  }
+
+  /// The menu a song gets everywhere else, with what only makes sense in the
+  /// queue: bringing a song up next (moved, not added a second time) and
+  /// taking it out of the queue.
+  Future<void> _showSongMenu(
+    BuildContext tileContext,
+    Map song,
+    String queueEntryId,
+  ) async {
+    final l10n = context.l10n!;
+    final colorScheme = Theme.of(context).colorScheme;
+    final index = _queueIndexOfKey(queueEntryId);
+    if (index == -1) return;
+    final currentIndex = audioHandler.currentQueueIndex;
+    final canPlayNext = currentIndex >= 0 && index > currentIndex + 1;
+
+    await showSongOptionsMenu(
+      context: context,
+      song: song,
+      position: menuPositionFor(tileContext),
+      // Adding to the queue a song already in it would only duplicate it.
+      showQueueActions: false,
+      leadingItems: [
+        if (canPlayNext)
+          buildPopupMenuItem<String>(
+            value: 'queue_play_next',
+            icon: FluentIcons.receipt_play_24_regular,
+            label: l10n.playNext,
+            colorScheme: colorScheme,
+          ),
+      ],
+      trailingItems: [
+        buildPopupMenuItem<String>(
+          value: 'queue_remove',
+          icon: FluentIcons.delete_24_regular,
+          label: l10n.removeFromQueue,
+          colorScheme: colorScheme,
+        ),
+      ],
+      onSelected: (value) async {
+        switch (value) {
+          case 'queue_play_next':
+            final current = audioHandler.currentQueueIndex;
+            if (current >= 0) {
+              await audioHandler.reorderQueueById(queueEntryId, current + 1);
+            }
+            return true;
+          case 'queue_remove':
+            await _removeKeepingFocus(queueEntryId);
+            return true;
+          case 'go_to_artist':
+            _goToArtist(song);
+            return true;
+        }
+        return false;
+      },
+    );
+  }
+
+  Future<void> _removeKeepingFocus(String queueEntryId) async {
+    final index = _queueIndexOfKey(queueEntryId);
+    if (index == -1) return;
+    final viewIndex = index - _start;
+    await audioHandler.removeFromQueue(index);
+    // The menu handed focus back to the tile just removed: move it to the
+    // song that took its place.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _focusedViewIndex() == null) _focusViewIndex(viewIndex);
+    });
+  }
+
+  /// The queue may sit in the now playing page, a route above the pages: the
+  /// artist page opens underneath it unless that route goes first.
+  void _goToArtist(Map song) {
+    final artistName = song['artist']?.toString().trim() ?? '';
+    if (artistName.isEmpty) return;
+    closeCurrentBottomSheet();
+    Navigator.of(context, rootNavigator: true).popUntil((r) => r.isFirst);
+    unawaited(
+      NavigationManager.router.push(
+        '${NavigationManager.searchPath}/artist/${Uri.encodeComponent(artistName)}',
+        extra: {'title': artistName, 'ytid': artistName},
+      ),
     );
   }
 }
@@ -399,20 +589,32 @@ class QueueTile extends StatelessWidget {
     required this.index,
     required this.queueEntryId,
     required this.isCurrentSong,
+    required this.focusNode,
     this.autofocus = false,
+    this.canReorder = true,
+    this.showMoreButton = false,
     required this.colorScheme,
     required this.onTap,
+    required this.onShowMenu,
     required this.onDismissed,
     this.confirmDismiss,
   });
 
   final Map song;
+
+  /// Position in the list shown, which is not the queue index.
   final int index;
   final String queueEntryId;
   final bool isCurrentSong;
+  final FocusNode focusNode;
   final bool autofocus;
+  final bool canReorder;
+  final bool showMoreButton;
   final ColorScheme colorScheme;
   final VoidCallback onTap;
+
+  /// Opens the song menu over the tile, whose context it is given.
+  final void Function(BuildContext tileContext) onShowMenu;
   final VoidCallback onDismissed;
   final Future<bool?> Function(DismissDirection)? confirmDismiss;
 
@@ -438,90 +640,110 @@ class QueueTile extends StatelessWidget {
             ? colorScheme.primaryContainer.withValues(alpha: 0.45)
             : Colors.transparent,
         borderRadius: BorderRadius.circular(14),
-        child: InkWell(
-          onTap: onTap,
-          autofocus: autofocus,
-          // The scroll to the current song is only an estimate; make sure the
-          // focused tile ends up on screen.
-          onFocusChange: autofocus
-              ? (focused) {
-                  if (focused)
-                    Scrollable.ensureVisible(context, alignment: 0.3);
-                }
-              : null,
-          borderRadius: BorderRadius.circular(14),
-          splashColor: Colors.transparent,
-          highlightColor: colorScheme.onSurface.withValues(alpha: 0.06),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            child: Row(
-              children: [
-                _ArtworkThumbnail(
-                  song: song,
-                  size: _artSize,
-                  radius: _artRadius,
-                  colorScheme: colorScheme,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        song['title']?.toString() ?? '',
-                        style: TextStyle(
-                          color: isCurrentSong
-                              ? colorScheme.primary
-                              : colorScheme.onSurface,
-                          fontSize: 14,
-                          fontWeight: isCurrentSong
-                              ? FontWeight.w600
-                              : FontWeight.w500,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        song['artist']?.toString() ?? '',
-                        style: TextStyle(
-                          color: colorScheme.onSurfaceVariant,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w400,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                if (isCurrentSong) ...[
-                  Icon(
-                    FluentIcons.music_note_2_24_regular,
-                    color: colorScheme.primary,
-                    size: 16,
-                  ),
-                  const SizedBox(width: 6),
-                ],
-                ReorderableDragStartListener(
-                  index: index,
+        child: Row(
+          children: [
+            Expanded(
+              child: RemoteHoldDetector(
+                focusNode: focusNode,
+                onPress: onTap,
+                onHold: () => onShowMenu(context),
+                child: InkWell(
+                  onTap: onTap,
+                  onLongPress: () => onShowMenu(context),
+                  focusNode: focusNode,
+                  autofocus: autofocus,
+                  borderRadius: BorderRadius.circular(14),
+                  splashColor: Colors.transparent,
+                  highlightColor: colorScheme.onSurface.withValues(alpha: 0.06),
                   child: Padding(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 14,
+                      horizontal: 12,
+                      vertical: 10,
                     ),
-                    child: Icon(
-                      FluentIcons.re_order_24_regular,
-                      color: colorScheme.onSurfaceVariant,
-                    ),
+                    child: _buildContent(),
                   ),
                 ),
-              ],
+              ),
             ),
-          ),
+            if (showMoreButton)
+              IconButton(
+                icon: Icon(
+                  FluentIcons.more_vertical_24_regular,
+                  color: colorScheme.onSurfaceVariant,
+                ),
+                tooltip: context.l10n!.moreOptions,
+                onPressed: () => onShowMenu(context),
+              ),
+          ],
         ),
       ),
+    );
+  }
+
+  Widget _buildContent() {
+    return Row(
+      children: [
+        _ArtworkThumbnail(
+          song: song,
+          size: _artSize,
+          radius: _artRadius,
+          colorScheme: colorScheme,
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                song['title']?.toString() ?? '',
+                style: TextStyle(
+                  color: isCurrentSong
+                      ? colorScheme.primary
+                      : colorScheme.onSurface,
+                  fontSize: 14,
+                  fontWeight: isCurrentSong ? FontWeight.w600 : FontWeight.w500,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 2),
+              Text(
+                song['artist']?.toString() ?? '',
+                style: TextStyle(
+                  color: colorScheme.onSurfaceVariant,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w400,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 8),
+        if (isCurrentSong) ...[
+          Icon(
+            FluentIcons.music_note_2_24_regular,
+            color: colorScheme.primary,
+            size: 16,
+          ),
+          const SizedBox(width: 6),
+        ],
+        if (canReorder)
+          ReorderableDragStartListener(
+            index: index,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 14),
+              child: Icon(
+                FluentIcons.re_order_24_regular,
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+          )
+        else
+          // Keeps the current song's text as wide as the others'.
+          const SizedBox(width: 40),
+      ],
     );
   }
 }

@@ -23,6 +23,7 @@
 
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:nicofy/widgets/text_field_remote_navigation.dart';
 
 class CustomSearchBar extends StatefulWidget {
   const CustomSearchBar({
@@ -89,7 +90,7 @@ class _CustomSearchBarState extends State<CustomSearchBar> {
         ),
         onSubmitted: (String value) {
           widget.onSubmitted(value);
-          widget.focusNode.unfocus();
+          releaseTextFieldAfterSubmit(widget.focusNode);
         },
         onChanged: widget.onChanged != null
             ? (value) async {

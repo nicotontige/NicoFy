@@ -56,6 +56,7 @@ import 'package:nicofy/utilities/language_utils.dart';
 import 'package:nicofy/utilities/platform_utils.dart';
 import 'package:nicofy/utilities/playlist_utils.dart';
 import 'package:nicofy/utilities/sharing_intent.dart';
+import 'package:nicofy/widgets/text_field_remote_navigation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 
@@ -292,6 +293,10 @@ class _NicoFyState extends State<NicoFy> with WidgetsBindingObserver {
             supportedLocales: appSupportedLocales,
             locale: languageSetting,
             routerConfig: NavigationManager.router,
+            builder: (context, child) => TextFieldRemoteNavigation(
+              enabled: isAndroidPlatform,
+              child: child!,
+            ),
           ),
         );
       },

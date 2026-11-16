@@ -28,6 +28,29 @@ int indexAfterQueueReorder(int index, int oldIndex, int newIndex) {
   return index;
 }
 
+/// First queue index the queue view lists: the song playing, so that it sits
+/// at the top and the songs already played stay out of sight. They are still
+/// in the queue, which is what lets back reach them again.
+///
+/// With no song playing, the whole queue is listed.
+int upcomingQueueStart(int currentIndex, int queueLength) =>
+    currentIndex >= 0 && currentIndex < queueLength ? currentIndex : 0;
+
+/// Queue index a song dragged within the queue view lands on, given the
+/// [start] of that view and the [viewIndex] it was dropped at (already
+/// adjusted for its own removal).
+///
+/// When the view starts with the song playing, nothing may land above it: it
+/// would end up among the songs already played, out of sight.
+int queueIndexForUpcomingDrop({
+  required int start,
+  required int viewIndex,
+  required bool startsWithCurrentSong,
+}) {
+  final firstFreeSlot = startsWithCurrentSong ? 1 : 0;
+  return start + (viewIndex < firstFreeSlot ? firstFreeSlot : viewIndex);
+}
+
 int? appendedQueueIndexForSourceIndex(
   List<Map> songs,
   int sourceIndex,
