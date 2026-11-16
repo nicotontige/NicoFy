@@ -1,0 +1,11 @@
+New
+- Control the TV from your phone: tap "Devices", pick the TV (enter the code it shows the first time) and the phone shows and drives what the TV plays: pause, next, previous, seek, the queue (play, remove, reorder, play next, shuffle, clear) and the radio. While connected, anything you start on the phone plays on the TV.
+- Radio: from the song playing, replaces what follows with up to 25 related songs. Available in Android Auto (instead of the stop button), in the full player and on the TV.
+- The queue only lists the song playing and the ones after it, on the phone, the TV and in Android Auto. Previous still plays the song before.
+- Android TV: long-press OK on a queue song (or its ⋮ button) opens the song menu, with "Play next" and "Remove from queue".
+
+Fixed
+- Changing a setting no longer leaves a black screen.
+- A restored song resumes where it stopped instead of from the start.
+- Android TV: the left menu stays on the queue page, and the remote can leave text fields.
+- Missing French translations, including the Android Auto menus.
