@@ -1,0 +1,8 @@
+New (Android TV)
+- A now-playing screen made for the remote: it opens with Play/Pause selected, so OK pauses, left/right go to the previous/next song, down reaches the progress bar where left/right skip back/forward 10 s, and up reaches the other actions (like, radio, queue, lyrics). Open it from "Now playing" at the top of the left menu or with OK on the mini player. The queue is now reached from this screen.
+- After a minute without touching the remote while music plays, the now-playing screen shows up in large; the first key press only wakes it.
+- You can always see where you are: the selected element gets a thick outline and a lighter background, and covers grow slightly.
+- Voice: "Ok Google, pause / next / previous" and "play <artist> on NicoFy" are handled.
+
+Changed
+- Previous is always offered to the system, so the notification and the car show it even with a single song.
