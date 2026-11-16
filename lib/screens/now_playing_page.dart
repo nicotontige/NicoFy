@@ -25,11 +25,13 @@ import 'package:audio_service/audio_service.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:nicofy/main.dart';
+import 'package:nicofy/screens/remote_player_page.dart';
 import 'package:nicofy/widgets/flip_card.dart';
 import 'package:nicofy/widgets/now_playing/bottom_actions_row.dart';
 import 'package:nicofy/widgets/now_playing/now_playing_artwork.dart';
 import 'package:nicofy/widgets/now_playing/now_playing_controls.dart';
 import 'package:nicofy/widgets/queue_list_view.dart';
+import 'package:nicofy/widgets/remote_control/remote_device_picker.dart';
 
 class NowPlayingPage extends StatefulWidget {
   const NowPlayingPage({super.key});
@@ -95,6 +97,10 @@ class _NowPlayingPageState extends State<NowPlayingPage> {
   }
 
   Widget _buildAppBar(BuildContext context, ColorScheme colorScheme) {
+    final style = IconButton.styleFrom(
+      backgroundColor: colorScheme.surfaceContainerHighest,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    );
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       child: Row(
@@ -102,13 +108,15 @@ class _NowPlayingPageState extends State<NowPlayingPage> {
           IconButton(
             iconSize: 26,
             icon: const Icon(FluentIcons.chevron_down_24_regular),
-            style: IconButton.styleFrom(
-              backgroundColor: colorScheme.surfaceContainerHighest,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
+            style: style,
             onPressed: () => Navigator.pop(context),
+          ),
+          const Spacer(),
+          // Controlling another device takes this page's place: its buttons
+          // would drive this device's player.
+          RemoteDevicesButton(
+            style: style,
+            onConnected: (context) => openRemotePlayer(context, replace: true),
           ),
         ],
       ),

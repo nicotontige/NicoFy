@@ -27,6 +27,7 @@ import 'package:material_ui/material_ui.dart';
 import 'package:nicofy/constants/app_constants.dart';
 import 'package:nicofy/extensions/l10n.dart';
 import 'package:nicofy/main.dart';
+import 'package:nicofy/screens/remote_player_page.dart';
 import 'package:nicofy/services/common_services.dart';
 import 'package:nicofy/services/listening_stats_service.dart';
 import 'package:nicofy/services/playlists_manager.dart';
@@ -39,6 +40,7 @@ import 'package:nicofy/widgets/listening_recap_card.dart';
 import 'package:nicofy/widgets/mini_player_bottom_space.dart';
 import 'package:nicofy/widgets/playlist_cube.dart';
 import 'package:nicofy/widgets/recommended_songs_section.dart';
+import 'package:nicofy/widgets/remote_control/remote_device_picker.dart';
 import 'package:nicofy/widgets/remote_focusable.dart';
 import 'package:nicofy/widgets/section_header.dart';
 
@@ -80,7 +82,13 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     final playlistHeight = MediaQuery.sizeOf(context).height * 0.25 / 1.1;
     return Scaffold(
-      appBar: AppBar(title: const Text('NicoFy.')),
+      appBar: AppBar(
+        title: const Text('NicoFy.'),
+        actions: const [
+          RemoteDevicesButton(onConnected: openRemotePlayer),
+          SizedBox(width: 8),
+        ],
+      ),
       body: SingleChildScrollView(
         padding: commonSingleChildScrollViewPadding,
         child: Column(

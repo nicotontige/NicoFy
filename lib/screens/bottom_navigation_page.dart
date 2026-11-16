@@ -28,12 +28,14 @@ import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:nicofy/extensions/l10n.dart';
 import 'package:nicofy/main.dart';
+import 'package:nicofy/services/remote_control/remote_control_controller.dart';
 import 'package:nicofy/services/router_service.dart';
 import 'package:nicofy/services/settings_manager.dart';
 import 'package:nicofy/utilities/flutter_bottom_sheet.dart'
     show closeCurrentBottomSheet, isBottomSheetOpen;
 import 'package:nicofy/widgets/mini_player.dart';
 import 'package:nicofy/widgets/queue_list_view.dart';
+import 'package:nicofy/widgets/remote_control/remote_mini_player.dart';
 
 class BottomNavigationPage extends StatefulWidget {
   const BottomNavigationPage({required this.child, super.key});
@@ -188,14 +190,26 @@ class _BottomNavigationPageState extends State<BottomNavigationPage> {
                                   Expanded(
                                     child: _buildPage(showQueue: isQueueShown),
                                   ),
-                                  if (isMiniPlayerVisible)
-                                    const Padding(
-                                      padding: EdgeInsets.symmetric(
-                                        horizontal: 8,
-                                        vertical: 8,
-                                      ),
-                                      child: MiniPlayer(),
-                                    ),
+                                  // While this device controls another, the
+                                  // bar shows and drives that one instead.
+                                  ValueListenableBuilder<RemoteControlState?>(
+                                    valueListenable:
+                                        RemoteControlController.instance.state,
+                                    builder: (context, remote, _) =>
+                                        remote == null && !isMiniPlayerVisible
+                                        ? const SizedBox.shrink()
+                                        : Padding(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 8,
+                                              vertical: 8,
+                                            ),
+                                            child: remote == null
+                                                ? const MiniPlayer()
+                                                : RemoteMiniPlayer(
+                                                    remote: remote,
+                                                  ),
+                                          ),
+                                  ),
                                 ],
                               );
                             },
