@@ -45,6 +45,7 @@ import 'package:nicofy/services/local_sync_service.dart';
 import 'package:nicofy/services/logger_service.dart';
 import 'package:nicofy/services/playlist_sharing.dart';
 import 'package:nicofy/services/playlists_manager.dart';
+import 'package:nicofy/services/remote_control/remote_playback_host.dart';
 import 'package:nicofy/services/router_service.dart';
 import 'package:nicofy/services/settings_manager.dart';
 import 'package:nicofy/services/stream_buffer_service.dart';
@@ -367,6 +368,8 @@ Future<void> initialisation() async {
       JustAudioMediaKit.ensureInitialized();
       audioHandler = NicoFyAudioHandler();
     }
+
+    startRemoteControlHosting(audioHandler);
 
     if (!kIsWeb && defaultTargetPlatform == TargetPlatform.windows) {
       final artwork = DesktopMediaArtwork();

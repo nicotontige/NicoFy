@@ -504,5 +504,112 @@
   "streamBuffer": "Mémoire tampon pendant la lecture",
   "streamBufferDescription": "Télécharge le titre en cours dans un fichier temporaire que le lecteur lit, pour qu'un ralentissement du réseau ne s'entende pas. Désactivé, le titre est lu directement en streaming.",
   "basedOnMusify": "Basé sur Musify de Valeri Gokadze",
-  "radioStation": "Station de radio"
+  "radioStation": "Station de radio",
+  "remoteDevices": "Appareils",
+  "remoteDevicesTitle": "Contrôler un appareil",
+  "remoteDevicesDescription": "La lecture reste sur l'appareil choisi ; celui-ci devient sa télécommande.",
+  "remoteControlOf": "Contrôler {device}",
+  "@remoteControlOf": {
+    "placeholders": {
+      "device": {
+        "type": "String"
+      }
+    }
+  },
+  "remotePlayingOn": "Lecture sur {device}",
+  "@remotePlayingOn": {
+    "placeholders": {
+      "device": {
+        "type": "String"
+      }
+    }
+  },
+  "remoteDisconnect": "Se déconnecter",
+  "remoteConnecting": "Connexion à {device}...",
+  "@remoteConnecting": {
+    "placeholders": {
+      "device": {
+        "type": "String"
+      }
+    }
+  },
+  "remoteUnreachable": "Impossible de joindre {device}. Nouvelle tentative...",
+  "@remoteUnreachable": {
+    "placeholders": {
+      "device": {
+        "type": "String"
+      }
+    }
+  },
+  "remoteNothingPlaying": "Rien n'est en lecture sur {device}",
+  "@remoteNothingPlaying": {
+    "placeholders": {
+      "device": {
+        "type": "String"
+      }
+    }
+  },
+  "remotePaired": "Appairé",
+  "remoteNotPaired": "Pas encore appairé · touchez pour appairer",
+  "remoteNoDevices": "Aucun appareil NicoFy trouvé. Sur l'autre appareil, ouvrez NicoFy et lancez une musique, sur le même Wi-Fi que celui-ci.",
+  "remoteErrorUntrusted": "{device} ne reconnaît plus cet appareil. Touchez-le à nouveau dans la liste pour les appairer.",
+  "@remoteErrorUntrusted": {
+    "placeholders": {
+      "device": {
+        "type": "String"
+      }
+    }
+  },
+  "remoteErrorOff": "{device} n'autorise pas le contrôle à distance. Activez-le dans ses paramètres, rubrique Synchronisation locale.",
+  "@remoteErrorOff": {
+    "placeholders": {
+      "device": {
+        "type": "String"
+      }
+    }
+  },
+  "remoteErrorUpdate": "Mettez à jour NicoFy sur {device} pour le contrôler d'ici.",
+  "@remoteErrorUpdate": {
+    "placeholders": {
+      "device": {
+        "type": "String"
+      }
+    }
+  },
+  "remoteErrorUnreachable": "Impossible de joindre {device}. Vérifiez que les deux appareils sont sur le même Wi-Fi.",
+  "@remoteErrorUnreachable": {
+    "placeholders": {
+      "device": {
+        "type": "String"
+      }
+    }
+  },
+  "remoteErrorFailed": "Connexion à {device} impossible. Réessayez.",
+  "@remoteErrorFailed": {
+    "placeholders": {
+      "device": {
+        "type": "String"
+      }
+    }
+  },
+  "remoteRetry": "Réessayer",
+  "remoteQueueChanged": "La file d'attente a changé sur {device}",
+  "@remoteQueueChanged": {
+    "placeholders": {
+      "device": {
+        "type": "String"
+      }
+    }
+  },
+  "remoteUpNext": "À suivre",
+  "remoteControlSetting": "Autoriser le contrôle à distance",
+  "remoteControlSettingDescription": "Vos appareils appairés sur le même Wi-Fi peuvent voir ce que joue celui-ci, le mettre en pause, passer au titre suivant ou en choisir un.",
+  "syncErrorPeerSyncOff": "La synchronisation locale est désactivée sur {device}. Activez-la sur cet appareil pour synchroniser.",
+  "@syncErrorPeerSyncOff": {
+    "placeholders": {
+      "device": {
+        "type": "String"
+      }
+    }
+  }
 }

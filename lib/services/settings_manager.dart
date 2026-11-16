@@ -159,6 +159,11 @@ final localSyncAutomatic = ValueNotifier<bool>(
   Hive.box('settings').get('localSyncAutomatic', defaultValue: true),
 );
 
+/// Whether paired devices may see and drive this device's playback.
+final remoteControlEnabled = ValueNotifier<bool>(
+  Hive.box('settings').get('remoteControlEnabled', defaultValue: true),
+);
+
 final localSyncLastSyncedAt = ValueNotifier<DateTime?>(
   _readDateTimeSetting('localSyncLastSyncedAt'),
 );
@@ -286,6 +291,11 @@ void reloadSettingsFromStorage() {
   );
   localSyncAutomatic.value = settings.get(
     'localSyncAutomatic',
+    defaultValue: true,
+  );
+
+  remoteControlEnabled.value = settings.get(
+    'remoteControlEnabled',
     defaultValue: true,
   );
 

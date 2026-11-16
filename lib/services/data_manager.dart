@@ -289,6 +289,7 @@ const _localSyncSettings = [
   'localSyncAutomatic',
   'localSyncCategories',
   'localSyncLastSyncedAt',
+  'remoteControlEnabled',
 ];
 
 @visibleForTesting

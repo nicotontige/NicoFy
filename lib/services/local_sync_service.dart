@@ -38,6 +38,8 @@ import 'package:nicofy/services/library_merge_service.dart';
 import 'package:nicofy/services/local_sync/sync_data.dart';
 import 'package:nicofy/services/local_sync/sync_pairing.dart';
 import 'package:nicofy/services/local_sync/sync_security.dart';
+import 'package:nicofy/services/remote_control/remote_protocol.dart';
+import 'package:nicofy/services/remote_control/remote_session.dart';
 import 'package:nicofy/services/settings_manager.dart';
 import 'package:nicofy/utilities/device_identity.dart';
 import 'package:nicofy/utilities/platform_utils.dart';
@@ -113,6 +115,9 @@ enum LocalSyncError {
   noCommonCategories,
   tooLarge,
   unreachable,
+
+  /// The other device runs only for remote control: its sync is off.
+  peerSyncOff,
   failed,
 }
 
@@ -212,6 +217,7 @@ class LocalSyncService {
   static const String _enabledKey = 'localSyncEnabled';
   static const String _automaticKey = 'localSyncAutomatic';
   static const String _lastSyncedAtKey = 'localSyncLastSyncedAt';
+  static const String _remoteControlKey = 'remoteControlEnabled';
 
   final ValueNotifier<LocalSyncState> state = ValueNotifier(
     const LocalSyncState(),
@@ -255,6 +261,28 @@ class LocalSyncService {
   final FlutterMulticastLock _multicastLock = FlutterMulticastLock();
 
   HttpServer? _httpServer;
+
+  /// The server answers sync requests, not only remote control ones.
+  bool _syncServing = false;
+
+  /// The server stays up for remote control even with sync turned off.
+  bool _remoteHosting = false;
+
+  /// The player paired devices may control; null where there is none.
+  RemotePlaybackTarget? remoteTarget;
+
+  late final RemoteControlHost remoteHost = RemoteControlHost(
+    secretFor: (deviceId) => _paired(deviceId)?.secret,
+    ownId: () => LibraryMergeService.deviceId,
+    deviceName: () => deviceName,
+    target: () => remoteTarget,
+    enabled: () => remoteControlEnabled.value,
+    onError: (error, stackTrace) => logger.log(
+      'Remote control request failed',
+      error: error,
+      stackTrace: stackTrace,
+    ),
+  );
   RawDatagramSocket? _udpSocket;
   StreamSubscription<BoxEvent>? _userBoxSubscription;
   String? _observedRecapReset;
@@ -361,7 +389,11 @@ class LocalSyncService {
     reloadSettingsFromStorage();
     if (storageChanged) await LibraryMergeService.forgetBaseline();
     await rebindStorageListeners();
-    if (localSyncEnabled.value) await startServer();
+    if (localSyncEnabled.value) {
+      await startServer();
+    } else if (_remoteHosting) {
+      await _serializeServer(_startServer);
+    }
   }
 
   Future<void> dispose() async {
@@ -381,7 +413,11 @@ class LocalSyncService {
 
     if (!enabled) {
       _localChangeTimer?.cancel();
-      await stopServer();
+      await _serializeServer(() async {
+        _syncServing = false;
+        // Remote control still needs it.
+        if (!_remoteHosting) await _stopServer();
+      });
       return true;
     }
     try {
@@ -393,6 +429,13 @@ class LocalSyncService {
     }
     unawaited(triggerSilentSync());
     return true;
+  }
+
+  /// Whether paired devices may control this device's playback.
+  Future<void> setRemoteControlEnabled(bool enabled) async {
+    await Hive.box('settings').put(_remoteControlKey, enabled);
+    remoteControlEnabled.value = enabled;
+    if (!enabled) remoteHost.closeAll();
   }
 
   Future<void> setAutomatic(bool enabled) async {
@@ -509,7 +552,30 @@ class LocalSyncService {
     return result;
   }
 
-  Future<void> startServer() => _serializeServer(_startServer);
+  /// Starts the server for sync (and remote control).
+  Future<void> startServer() => _serializeServer(() async {
+    await _startServer();
+    _syncServing = true;
+  });
+
+  /// Keeps the server up for remote control alone, or lets it stop when
+  /// sync does not need it either. Failing to start is only logged: the
+  /// device is then just not controllable.
+  Future<void> setRemoteHosting(bool hosting) => _serializeServer(() async {
+    _remoteHosting = hosting;
+    if (!hosting) remoteHost.closeAll();
+    if (hosting) {
+      try {
+        await _startServer();
+      } catch (_) {
+        // Logged by _startServer.
+      }
+    } else if (!_syncServing) {
+      await _stopServer();
+    }
+  });
+
+  bool get isRemoteHosting => _remoteHosting;
 
   Future<void> _startServer() async {
     if (_httpServer != null) return;
@@ -548,6 +614,8 @@ class LocalSyncService {
   Future<void> stopServer() => _serializeServer(_stopServer);
 
   Future<void> _stopServer() async {
+    _syncServing = false;
+    remoteHost.closeAll();
     _cancelPendingPairing();
     cancelPinInput();
     _udpSocket?.close();
@@ -589,6 +657,9 @@ class LocalSyncService {
             '/api/sync/pair-verify' => _handlePairVerify,
             '/api/sync/capabilities' => _handleCapabilities,
             '/api/sync/merge' => _handleMerge,
+            remoteOpenPath ||
+            remoteStatePath ||
+            remoteCommandPath => _handleRemote,
             _ => null,
           };
     // The clients always say so. A web page cannot send JSON to another
@@ -970,6 +1041,8 @@ class LocalSyncService {
   }
 
   Future<_Reply> _handleCapabilities(HttpRequest request) async {
+    // Up for remote control only: this device does not sync.
+    if (!_syncServing) return (503, {'error': 'sync_off'});
     try {
       final auth = await _authenticated(request, maxBytes: _smallMessageBytes);
       return await _encryptedReply(request, auth.peer, auth.body, {
@@ -984,6 +1057,7 @@ class LocalSyncService {
   }
 
   Future<_Reply> _handleMerge(HttpRequest request) async {
+    if (!_syncServing) return (503, {'error': 'sync_off'});
     var transferStarted = false;
     try {
       final auth = await _authenticated(request);
@@ -998,7 +1072,7 @@ class LocalSyncService {
       if (library['schemaVersion'] != syncSchemaVersion) {
         return (426, {'error': 'upgrade_required'});
       }
-      if (_httpServer == null) return (503, {'error': 'sync_off'});
+      if (!_syncServing) return (503, {'error': 'sync_off'});
       final result = await LibraryMergeService.mergeLibrary(
         Map<String, dynamic>.from(library),
         categories: categories,
@@ -1021,6 +1095,23 @@ class LocalSyncService {
     } finally {
       if (transferStarted) _endTransfer();
     }
+  }
+
+  Future<_Reply> _handleRemote(HttpRequest request) async {
+    final Map<String, dynamic> envelope;
+    try {
+      envelope = await _readJson(request, maxBytes: _smallMessageBytes);
+    } on _HttpFailure catch (e) {
+      return (e.status, {'error': e.code});
+    } catch (_) {
+      return (400, {'error': 'invalid'});
+    }
+    return remoteHost.handle(
+      request.uri.path,
+      deviceId: request.headers.value(remoteDeviceHeader),
+      sessionId: request.headers.value(remoteSessionHeader),
+      envelope: envelope,
+    );
   }
 
   /// Rejects the pairing request currently shown on this device, if any.
@@ -1199,7 +1290,7 @@ class LocalSyncService {
 
     var pairing = false;
     try {
-      if (_httpServer == null) {
+      if (!_syncServing) {
         throw const _LocalSyncException(LocalSyncError.notRunning);
       }
 
@@ -1336,7 +1427,7 @@ class LocalSyncService {
     if (!localSyncEnabled.value ||
         !localSyncAutomatic.value ||
         offlineMode.value ||
-        _httpServer == null ||
+        !_syncServing ||
         pairedDevices.value.isEmpty) {
       return;
     }
@@ -1446,6 +1537,68 @@ class LocalSyncService {
     _outgoingExpires = null;
   }
 
+  /// Pairs with [device] by PIN without syncing anything, for remote control.
+  /// [askPin] shows the PIN entry once the other device displays its PIN, and
+  /// returns null when the user gives up. Returns null once paired, or why it
+  /// failed; giving up is not a failure.
+  Future<LocalSyncError?> pairWith(
+    DiscoveredSyncDevice device, {
+    required Future<String?> Function() askPin,
+  }) async {
+    var pairing = true;
+    try {
+      await _requestPairing(device);
+      final pin = await askPin();
+      if (pin == null || pin.trim().isEmpty) {
+        pairing = false;
+        return null;
+      }
+      await _verifyPairing(device, pin.trim());
+      return null;
+    } catch (e, stackTrace) {
+      logger.log(
+        'Pairing with ${device.name} failed',
+        error: e,
+        stackTrace: stackTrace,
+      );
+      return _errorFor(e, pairing: pairing);
+    }
+  }
+
+  /// A connection to control [device], which must be paired.
+  RemoteControlClient? remoteClientFor(DiscoveredSyncDevice device) {
+    final peer = _paired(device.deviceId);
+    if (peer == null) return null;
+    return RemoteControlClient(
+      ownId: LibraryMergeService.deviceId,
+      peerId: peer.deviceId,
+      secret: peer.secret,
+      transport: (path, envelope, headers, timeout) async {
+        try {
+          return await _post(
+            device,
+            path,
+            envelope,
+            timeout: timeout,
+            headers: headers,
+          );
+        } on _HttpFailure catch (e) {
+          throw RemoteRequestFailure(e.status, e.code);
+        }
+      },
+    );
+  }
+
+  /// [device] answered with its pairing secret from its address: a later
+  /// discovery answer from elsewhere cannot take its place.
+  Future<void> rememberControlledDevice(
+    DiscoveredSyncDevice device,
+    String? name,
+  ) async {
+    _verifiedAddress[device.deviceId] = device.ip;
+    if (name != null) await _recordName(device.deviceId, _sanitizeName(name));
+  }
+
   Future<Map<String, dynamic>> _securePost(
     DiscoveredSyncDevice target,
     String path,
@@ -1453,7 +1606,7 @@ class LocalSyncService {
   ) async {
     final peer = _paired(target.deviceId);
     if (peer == null) throw const _LocalSyncException(LocalSyncError.untrusted);
-    if (_httpServer == null) {
+    if (!_syncServing) {
       throw const _LocalSyncException(LocalSyncError.notRunning);
     }
     final ownId = LibraryMergeService.deviceId;
@@ -1548,7 +1701,7 @@ class LocalSyncService {
       throw const _LocalSyncException(LocalSyncError.failed);
     }
     onStage?.call(LocalSyncStage.merging);
-    if (_httpServer == null) {
+    if (!_syncServing) {
       throw const _LocalSyncException(LocalSyncError.notRunning);
     }
     final local = await LibraryMergeService.mergeLibrary(
@@ -1568,6 +1721,11 @@ class LocalSyncService {
     final now = DateTime.now().toUtc();
     await Hive.box('settings').put(_lastSyncedAtKey, now.toIso8601String());
     localSyncLastSyncedAt.value = now;
+    await _recordName(deviceId, name);
+  }
+
+  /// Keeps the name a paired device gives itself up to date.
+  Future<void> _recordName(String deviceId, String name) async {
     await _serializePaired(() async {
       final peer = _paired(deviceId);
       if (peer != null && peer.name != name) {
@@ -1633,6 +1791,7 @@ class LocalSyncService {
       return switch (error.status) {
         426 => LocalSyncError.updateRequired,
         429 => LocalSyncError.busy,
+        503 when error.code == 'sync_off' => LocalSyncError.peerSyncOff,
         413 => LocalSyncError.tooLarge,
         403 when error.code == 'incorrect_pin' => LocalSyncError.incorrectPin,
         403 => pairing ? LocalSyncError.rejected : LocalSyncError.untrusted,
@@ -1715,7 +1874,7 @@ class LocalSyncService {
         )
         .take(_maxDiscoveryNameRunes);
     final cleaned = String.fromCharCodes(kept).trim();
-    return cleaned.isEmpty ? 'Musify' : cleaned;
+    return cleaned.isEmpty ? 'NicoFy' : cleaned;
   }
 
   /// The limited broadcast plus each interface's /24 broadcast.

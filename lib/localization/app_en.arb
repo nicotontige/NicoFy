@@ -504,5 +504,112 @@
   "youtubePlaylistLinkOrId": "YouTube playlist link or ID",
   "updateDownloadFailed": "The update could not be installed from the app, opening the download link",
   "basedOnMusify": "Based on Musify by Valeri Gokadze",
-  "radioStation": "Radio station"
+  "radioStation": "Radio station",
+  "remoteDevices": "Devices",
+  "remoteDevicesTitle": "Control a device",
+  "remoteDevicesDescription": "Playback stays on the device you pick; this one becomes its remote.",
+  "remoteControlOf": "Control {device}",
+  "@remoteControlOf": {
+    "placeholders": {
+      "device": {
+        "type": "String"
+      }
+    }
+  },
+  "remotePlayingOn": "Playing on {device}",
+  "@remotePlayingOn": {
+    "placeholders": {
+      "device": {
+        "type": "String"
+      }
+    }
+  },
+  "remoteDisconnect": "Disconnect",
+  "remoteConnecting": "Connecting to {device}...",
+  "@remoteConnecting": {
+    "placeholders": {
+      "device": {
+        "type": "String"
+      }
+    }
+  },
+  "remoteUnreachable": "Can't reach {device}. Trying again...",
+  "@remoteUnreachable": {
+    "placeholders": {
+      "device": {
+        "type": "String"
+      }
+    }
+  },
+  "remoteNothingPlaying": "Nothing is playing on {device}",
+  "@remoteNothingPlaying": {
+    "placeholders": {
+      "device": {
+        "type": "String"
+      }
+    }
+  },
+  "remotePaired": "Paired",
+  "remoteNotPaired": "Not paired yet · tap to pair",
+  "remoteNoDevices": "No NicoFy device found. On the other device, open NicoFy and play something, on the same Wi-Fi as this one.",
+  "remoteErrorUntrusted": "{device} doesn't recognise this device any more. Tap it again in the list to pair them.",
+  "@remoteErrorUntrusted": {
+    "placeholders": {
+      "device": {
+        "type": "String"
+      }
+    }
+  },
+  "remoteErrorOff": "{device} doesn't allow remote control. Turn it on in its settings, under Local sync.",
+  "@remoteErrorOff": {
+    "placeholders": {
+      "device": {
+        "type": "String"
+      }
+    }
+  },
+  "remoteErrorUpdate": "Update NicoFy on {device} to control it from here.",
+  "@remoteErrorUpdate": {
+    "placeholders": {
+      "device": {
+        "type": "String"
+      }
+    }
+  },
+  "remoteErrorUnreachable": "Couldn't reach {device}. Make sure both devices are on the same Wi-Fi.",
+  "@remoteErrorUnreachable": {
+    "placeholders": {
+      "device": {
+        "type": "String"
+      }
+    }
+  },
+  "remoteErrorFailed": "Couldn't connect to {device}. Try again.",
+  "@remoteErrorFailed": {
+    "placeholders": {
+      "device": {
+        "type": "String"
+      }
+    }
+  },
+  "remoteRetry": "Try again",
+  "remoteQueueChanged": "The queue changed on {device}",
+  "@remoteQueueChanged": {
+    "placeholders": {
+      "device": {
+        "type": "String"
+      }
+    }
+  },
+  "remoteUpNext": "Up next",
+  "remoteControlSetting": "Allow remote control",
+  "remoteControlSettingDescription": "Your paired devices on the same Wi-Fi can see what this device plays and pause it, skip or pick a song.",
+  "syncErrorPeerSyncOff": "{device} has local sync turned off. Turn it on there to sync.",
+  "@syncErrorPeerSyncOff": {
+    "placeholders": {
+      "device": {
+        "type": "String"
+      }
+    }
+  }
 }

@@ -109,12 +109,28 @@ class LocalSyncSettingsSection extends StatelessWidget {
               description: enabled
                   ? _lastSyncText(context, lastSynced)
                   : l10n.syncOffDescription,
-              borderRadius: commonCustomBarRadius,
+              borderRadius: commonCustomBarRadiusFirst,
               onTap: () => context.push('/settings/local-sync'),
               trailing: Switch(
                 value: enabled,
                 onChanged: (value) => _setLocalSync(context, value),
               ),
+            ),
+          ),
+        ),
+        // Works without sync: a TV is controllable as soon as it plays.
+        ValueListenableBuilder<bool>(
+          valueListenable: remoteControlEnabled,
+          builder: (context, enabled, _) => CustomBar(
+            l10n.remoteControlSetting,
+            FluentIcons.cast_24_regular,
+            description: l10n.remoteControlSettingDescription,
+            borderRadius: commonCustomBarRadiusLast,
+            onTap: () =>
+                LocalSyncService.instance.setRemoteControlEnabled(!enabled),
+            trailing: Switch(
+              value: enabled,
+              onChanged: LocalSyncService.instance.setRemoteControlEnabled,
             ),
           ),
         ),
@@ -778,6 +794,7 @@ class _LocalSyncPageState extends State<LocalSyncPage> {
       LocalSyncError.noCommonCategories => l10n.syncErrorNoCategories,
       LocalSyncError.tooLarge => l10n.syncErrorTooLarge,
       LocalSyncError.unreachable => l10n.syncErrorUnreachable(name),
+      LocalSyncError.peerSyncOff => l10n.syncErrorPeerSyncOff(name),
       LocalSyncError.failed => l10n.syncErrorFailed(name),
     };
   }
