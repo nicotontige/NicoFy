@@ -486,5 +486,7 @@
   "userPlaylists": "User playlists",
   "yes": "Yes",
   "youtubePlaylistLinkOrId": "YouTube playlist link or ID",
-  "updateDownloadFailed": "The update could not be installed from the app, opening the download link"
+  "updateDownloadFailed": "The update could not be installed from the app, opening the download link",
+  "basedOnMusify": "Based on Musify by Valeri Gokadze",
+  "radioStation": "Radio station"
 }

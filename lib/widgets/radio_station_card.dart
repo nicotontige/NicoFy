@@ -23,6 +23,7 @@
 
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:material_ui/material_ui.dart';
+import 'package:nicofy/extensions/l10n.dart';
 import 'package:nicofy/models/radio_model.dart';
 import 'package:nicofy/services/common_services.dart';
 import 'package:nicofy/utilities/artwork_provider.dart';
@@ -142,7 +143,7 @@ class _RadioStationCardState extends State<RadioStationCard> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        widget.station.genre ?? 'Radio Station',
+                        widget.station.genre ?? context.l10n!.radioStation,
                         style: textTheme.labelSmall?.copyWith(
                           color: colorScheme.onSurfaceVariant,
                           fontWeight: FontWeight.w500,

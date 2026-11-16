@@ -56,7 +56,7 @@ class Logger {
       }
     } catch (e, stackTrace) {
       log('Error copying logs', error: e, stackTrace: stackTrace);
-      return 'Error: $e';
+      return '${context.l10n!.error} ($e)';
     }
   }
 

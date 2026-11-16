@@ -28,6 +28,7 @@ import 'package:hive_ce/hive_ce.dart';
 import 'package:nicofy/database/albums.db.dart';
 import 'package:nicofy/database/playlists.db.dart';
 import 'package:nicofy/extensions/l10n.dart';
+import 'package:nicofy/localization/app_localizations.dart';
 import 'package:nicofy/main.dart' show logger;
 import 'package:nicofy/services/artist_service.dart';
 import 'package:nicofy/services/data_manager.dart';
@@ -178,7 +179,7 @@ Future<List<dynamic>> getUserPlaylists() async {
       );
       return {
         'ytid': playlistID,
-        'title': 'Failed playlist',
+        'title': lookupAppLocalizations(languageSetting).failedToLoadPlaylist,
         'image': null,
         'source': 'user-youtube',
         'list': [],

@@ -125,7 +125,7 @@ class AboutPage extends StatelessWidget {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            'Based on Musify by Valeri Gokadze',
+                            context.l10n!.basedOnMusify,
                             style: TextStyle(
                               color: Theme.of(context)
                                   .colorScheme
