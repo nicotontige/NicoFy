@@ -368,8 +368,10 @@ class PlayerControlButtons extends StatelessWidget {
     BoxConstraints buttonConstraints,
     EdgeInsets buttonPadding,
   ) {
-    return StreamBuilder<List<MediaItem>>(
-      stream: audioHandler.queue,
+    // The whole queue: the one published to the system starts at the song
+    // playing, and would read as a single song at the end of a long queue.
+    return StreamBuilder<List<Map>>(
+      stream: audioHandler.queueAsMapStream,
       builder: (context, snapshot) {
         final queue = snapshot.data ?? [];
         return ValueListenableBuilder<AudioServiceRepeatMode>(

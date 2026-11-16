@@ -26,9 +26,11 @@ import 'dart:io';
 
 import 'package:audio_service/audio_service.dart';
 import 'package:audio_session/audio_session.dart';
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:hive_ce/hive_ce.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:nicofy/constants/clients.dart';
+import 'package:nicofy/localization/app_localizations.dart';
 import 'package:nicofy/main.dart';
 import 'package:nicofy/models/position_data.dart';
 import 'package:nicofy/models/song_chapter.dart';
@@ -242,6 +244,20 @@ class NicoFyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
           canFetchRecommendedSong);
 
   static const _likeCustomAction = 'toggleLike';
+  static const _radioCustomAction = 'startRadio';
+
+  /// How many songs a radio queues after the one it was started from.
+  static const int radioLength = 25;
+  static const Duration _radioFetchTimeout = Duration(seconds: 20);
+
+  /// Stop is no longer one of the buttons, the radio took its place, but the
+  /// system and the car can still ask for it.
+  static const Set<MediaAction> _systemActions = {
+    MediaAction.seek,
+    MediaAction.seekForward,
+    MediaAction.seekBackward,
+    MediaAction.stop,
+  };
 
   List<MediaControl> _controls(bool playing) {
     final hasMultipleTracks = _queueList.length > 1;
@@ -252,7 +268,7 @@ class NicoFyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
       else
         MediaControl.rewind,
       if (playing) MediaControl.pause else MediaControl.play,
-      MediaControl.stop,
+      _radioControl(),
       if (hasMultipleTracks || canFetchRecommendedSong)
         MediaControl.skipToNext
       else
@@ -261,13 +277,31 @@ class NicoFyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
     ];
   }
 
+  AppLocalizations? get _l10n {
+    try {
+      return lookupAppLocalizations(languageSetting);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// The radio, where a stop button used to sit: in a car it is the cross
+  /// left of the heart, which nobody had a use for.
+  MediaControl _radioControl() => MediaControl.custom(
+    androidIcon: 'drawable/ic_radio',
+    label: _l10n?.startRadio ?? 'Start radio',
+    name: _radioCustomAction,
+  );
+
   /// Liking from a car: Android Auto draws the extra controls a session
   /// declares, and the icon has to say which way the toggle goes.
   MediaControl _likeControl() {
     final liked = isSongAlreadyLiked(currentSong?['ytid']);
     return MediaControl.custom(
       androidIcon: liked ? 'drawable/ic_liked' : 'drawable/ic_like',
-      label: liked ? 'Unlike' : 'Like',
+      label: liked
+          ? _l10n?.removeFromLikedSongs ?? 'Unlike'
+          : _l10n?.addToLikedSongs ?? 'Like',
       name: _likeCustomAction,
     );
   }
@@ -405,10 +439,17 @@ class NicoFyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
     final song = currentSong;
     if (song == null) return;
 
+    // Until the song a restored queue stopped on is loaded again, the player
+    // has nothing in it and reports zero. Saving that would lose the place
+    // the restore is still waiting to resume at: opening the app and leaving
+    // it, or the car stopping the session before anything played, was enough
+    // for the next launch to start the song over from its beginning.
+    final pendingPosition = _restoredPositionFor(song);
+
     queuePersistenceService.savePosition(
       _currentQueueIndex,
       _queueEntryIds.ensureId(song),
-      position,
+      pendingPosition ?? position,
       force: force,
     );
   }
@@ -452,16 +493,21 @@ class NicoFyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
     }
   }
 
-  /// The position a restored queue resumes at, given out once and only for the
-  /// song it was saved on. Every other song starts from its beginning.
-  Duration? _consumeRestoredPosition(Map song) {
+  /// The position a restored queue resumes at, only for the song it was saved
+  /// on. Every other song starts from its beginning.
+  Duration? _restoredPositionFor(Map song) {
     final position = _restoredPosition;
     final entryId = _restoredPositionEntryId;
-    _restoredPosition = null;
-    _restoredPositionEntryId = null;
-
     if (position == null || entryId == null) return null;
     return song['queueEntryId']?.toString() == entryId ? position : null;
+  }
+
+  /// Called once a song is actually loaded. Until then the restored position
+  /// is kept: a first attempt that fails or is overtaken must not use it up,
+  /// or the attempt that does load the song starts it from zero.
+  void _clearRestoredPosition() {
+    _restoredPosition = null;
+    _restoredPositionEntryId = null;
   }
 
   void _hydrateQueueEntryIds() {
@@ -484,8 +530,38 @@ class NicoFyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
     return mapToMediaItem(song).copyWith(id: _queueEntryIds.ensureId(song));
   }
 
-  List<MediaItem> _buildQueueMediaItems() =>
-      _queueList.map(_getMediaItemForQueue).toList(growable: false);
+  /// Where the queue shown outside the app starts: at the song playing. The
+  /// songs before it stay in [_queueList], so previous still reaches them and
+  /// brings each back to the top as it plays again, but a car (and the system
+  /// media controls) only list what is playing and what comes next.
+  int get _visibleQueueStart => _hasCurrentQueueIndex ? _currentQueueIndex : 0;
+
+  /// The start of the queue last published on [queue], which is what the
+  /// indexes a car sends back refer to.
+  int _publishedQueueStart = 0;
+
+  List<MediaItem> _buildQueueMediaItems() => _queueList
+      .skip(_visibleQueueStart)
+      .map(_getMediaItemForQueue)
+      .toList(growable: false);
+
+  void _publishVisibleQueue() {
+    final start = _visibleQueueStart;
+    queue.add(_buildQueueMediaItems());
+    _publishedQueueStart = start;
+  }
+
+  /// The current song's index within the published queue, republishing it
+  /// first when playback moved to another song since: the two have to agree,
+  /// or the car highlights and plays the wrong rows.
+  int? _visibleQueueIndex() {
+    if (!_hasCurrentQueueIndex) return null;
+    if (_publishedQueueStart != _visibleQueueStart) _publishVisibleQueue();
+    return _currentQueueIndex - _publishedQueueStart;
+  }
+
+  /// A queue index sent by the car, as an index into [_queueList].
+  int _queueIndexFromVisible(int index) => index + _publishedQueueStart;
 
   bool _playerSourceMatchesCurrentSong() {
     if (!_hasCurrentQueueIndex) return false;
@@ -549,10 +625,11 @@ class NicoFyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
         currentSongYtid,
       );
 
+      final visibleIndex = _visibleQueueIndex() ?? 0;
       final existingQueue = queue.valueOrNull;
       final queueItem =
-          existingQueue != null && queueIndex < existingQueue.length
-          ? existingQueue[queueIndex]
+          existingQueue != null && visibleIndex < existingQueue.length
+          ? existingQueue[visibleIndex]
           : null;
       final storedDuration = readMediaDuration(currentSong['duration']);
       var stableDuration = storedDuration;
@@ -611,7 +688,7 @@ class NicoFyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
       if (existingQueue != null && queueItem != null) {
         if (!durationEquals(queueItem.duration, stableDuration)) {
           final updatedQueue = List<MediaItem>.from(existingQueue);
-          updatedQueue[queueIndex] = queueItem.copyWith(
+          updatedQueue[visibleIndex] = queueItem.copyWith(
             duration: stableDuration,
           );
           queue.add(updatedQueue);
@@ -619,12 +696,14 @@ class NicoFyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
         }
       } else {
         final rebuiltQueue = _buildQueueMediaItems();
-        if (queueIndex < rebuiltQueue.length) {
-          rebuiltQueue[queueIndex] = rebuiltQueue[queueIndex].copyWith(
+        final rebuiltIndex = queueIndex - _visibleQueueStart;
+        if (rebuiltIndex >= 0 && rebuiltIndex < rebuiltQueue.length) {
+          rebuiltQueue[rebuiltIndex] = rebuiltQueue[rebuiltIndex].copyWith(
             duration: stableDuration,
           );
         }
         queue.add(rebuiltQueue);
+        _publishedQueueStart = _visibleQueueStart;
         publishedQueueChanged = true;
       }
 
@@ -889,11 +968,13 @@ class NicoFyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
           (bufferedPosition - currentState.bufferedPosition).abs() >=
               const Duration(seconds: 1);
 
+      final visibleQueueIndex = _visibleQueueIndex();
+
       final shouldUpdate =
           currentState == null ||
           currentState.playing != isPlaying ||
           currentState.processingState != newProcessingState ||
-          currentState.queueIndex != _currentQueueIndex ||
+          currentState.queueIndex != visibleQueueIndex ||
           currentState.speed != audioPlayer.speed ||
           shouldEmitProgressTick ||
           hasBufferedPositionChange ||
@@ -909,22 +990,14 @@ class NicoFyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
         playbackState.add(
           PlaybackState(
             controls: _controls(isPlaying),
-            systemActions: const {
-              MediaAction.seek,
-              MediaAction.seekForward,
-              MediaAction.seekBackward,
-            },
+            systemActions: _systemActions,
             androidCompactActionIndices: const [0, 1, 3],
             processingState: newProcessingState,
             playing: isPlaying,
             updatePosition: currentPosition,
             bufferedPosition: bufferedPosition,
             speed: audioPlayer.speed,
-            queueIndex:
-                _currentQueueIndex >= 0 &&
-                    _currentQueueIndex < _queueList.length
-                ? _currentQueueIndex
-                : null,
+            queueIndex: visibleQueueIndex,
             updateTime: now,
           ),
         );
@@ -1158,6 +1231,126 @@ class NicoFyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
         stackTrace: stackTrace,
       );
     }
+  }
+
+  /// Where a radio gets its songs. Replaced in tests, which cannot reach
+  /// YouTube.
+  @visibleForTesting
+  Future<List<Map<String, dynamic>>> Function(
+    String ytid, {
+    Set<String> excludedYtIds,
+    int count,
+  })
+  radioSongsFetcher = getRadioSongs;
+
+  Future<int>? _radioInFlight;
+
+  /// A radio started from the song playing, the way Spotify does it: that
+  /// song carries on, and everything queued after it gives way to about
+  /// [radioLength] songs related to it. The songs already played stay where
+  /// they are, so going back still works.
+  ///
+  /// Returns how many songs the radio queued, 0 when the queue was left as it
+  /// was — offline, nothing related found, playback moved on meanwhile. The
+  /// song playing is never interrupted, and the car is told why.
+  Future<int> startRadio() {
+    // A second press while the first one is fetching would only fetch the
+    // same songs again.
+    return _radioInFlight ??= _startRadio().whenComplete(
+      () => _radioInFlight = null,
+    );
+  }
+
+  Future<int> _startRadio() async {
+    await _startup;
+
+    final song = currentSong;
+    final ytid = song == null ? null : songYtid(song);
+    if (song == null || ytid == null) {
+      logger.log('Nothing playing to start a radio from');
+      return 0;
+    }
+
+    if (offlineMode.value) {
+      logger.log('No radio in offline mode');
+      _reportNonFatalError(_l10n?.radioUnavailable);
+      return 0;
+    }
+
+    final entryId = _queueEntryIds.ensureId(song);
+    // What was played before the song the radio starts from: hearing it again
+    // straight away is not what a radio is for.
+    final excluded = {
+      for (final played in [
+        ..._queueList.take(_currentQueueIndex + 1),
+        ..._historyList,
+      ])
+        ?songYtid(played),
+    };
+
+    List<Map<String, dynamic>> related;
+    try {
+      related = await radioSongsFetcher(
+        ytid,
+        excludedYtIds: excluded,
+        count: radioLength,
+      ).timeout(_radioFetchTimeout, onTimeout: () => const []);
+    } catch (e, stackTrace) {
+      logger.log('Error fetching radio songs', error: e, stackTrace: stackTrace);
+      related = const [];
+    }
+
+    if (related.isEmpty) {
+      _reportNonFatalError(_l10n?.radioUnavailable);
+      return 0;
+    }
+
+    return _replaceUpcomingSongs(entryId, related);
+  }
+
+  /// Puts [songs] after the queue entry [entryId] in place of whatever
+  /// followed it. Only while that entry is still the one playing: a radio
+  /// that arrives after the user moved on was asked for another song.
+  int _replaceUpcomingSongs(String entryId, List<Map> songs) {
+    final index = _currentQueueIndex;
+    if (!_hasCurrentQueueIndex ||
+        _queueEntryIds.ensureId(_queueList[index]) != entryId) {
+      logger.log('Playback moved on while the radio was fetched, dropping it');
+      return 0;
+    }
+
+    final radioSongs = [
+      for (final song in songs)
+        _queueEntryIds.createSong(song)..['isAutoPicked'] = true,
+    ];
+
+    _queueList
+      ..removeRange(index + 1, _queueList.length)
+      ..addAll(radioSongs);
+
+    // With shuffle on, turning it off goes back to this order rather than to
+    // the queue the radio replaced.
+    if (_originalQueueList.isNotEmpty) {
+      _originalQueueList
+        ..clear()
+        ..addAll(cloneMaps(_queueList));
+      _rebuildOriginalQueueEntryIndex();
+    }
+
+    _cleanupOldPreloadedSongs();
+    _updateQueueMediaItems();
+    _updatePlaybackState(force: true);
+    _preloadUpcomingSongs();
+    return radioSongs.length;
+  }
+
+  /// Tells the car something did not work out without stopping anything: a
+  /// session reporting an error while it still plays is shown as a message.
+  /// The next state published clears it.
+  void _reportNonFatalError(String? message) {
+    final state = playbackState.valueOrNull;
+    if (state == null || message == null) return;
+    playbackState.add(state.copyWith(errorCode: 0, errorMessage: message));
   }
 
   Map? _getCurrentSongForRecommendations() {
@@ -1525,14 +1718,12 @@ class NicoFyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
     try {
       _queueEntryIds.ensureIds(_queueList);
 
-      final mediaItems = _buildQueueMediaItems();
-      queue.add(mediaItems);
+      _publishVisibleQueue();
 
       _queueMapStream.add(List.unmodifiable(_queueList));
 
-      if (_currentQueueIndex >= 0 && _currentQueueIndex < mediaItems.length) {
-        final currentMediaItem = mediaItems[_currentQueueIndex];
-        mediaItem.add(currentMediaItem);
+      if (_hasCurrentQueueIndex) {
+        mediaItem.add(_getMediaItemForQueue(_queueList[_currentQueueIndex]));
       }
 
       _persistQueue();
@@ -1547,7 +1738,6 @@ class NicoFyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
 
   void _emitOptimisticLoadingState({
     Map? song,
-    int? queueIndex,
     bool includeMediaItem = false,
     String? mediaId,
   }) {
@@ -1567,22 +1757,17 @@ class NicoFyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
           controls: [
             MediaControl.skipToPrevious,
             MediaControl.pause,
-            MediaControl.stop,
+            // Kept in step with _controls so the radio and like buttons do not
+            // blink out of the notification on every song change.
+            _radioControl(),
             MediaControl.skipToNext,
-            // Kept in step with _controls so the like button does not blink
-            // out of the notification on every song change.
             _likeControl(),
           ],
-          systemActions: const {
-            MediaAction.seek,
-            MediaAction.seekForward,
-            MediaAction.seekBackward,
-          },
+          systemActions: _systemActions,
           androidCompactActionIndices: const [0, 1, 3],
           processingState: AudioProcessingState.loading,
           speed: audioPlayer.speed,
-          queueIndex:
-              queueIndex ?? (_hasCurrentQueueIndex ? _currentQueueIndex : null),
+          queueIndex: _visibleQueueIndex(),
           updateTime: DateTime.now(),
         ),
       );
@@ -1645,10 +1830,7 @@ class NicoFyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
         mediaItem.add(currentMediaItem);
       });
 
-      _emitOptimisticLoadingState(
-        queueIndex: _currentQueueIndex,
-        mediaId: uniqueId,
-      );
+      _emitOptimisticLoadingState(mediaId: uniqueId);
 
       final success = await playSong(
         _queueList[index],
@@ -1879,6 +2061,12 @@ class NicoFyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
   @override
   List<Map> get browserQueue => _queueList;
 
+  /// The same start as the queue published to the session, so the index a
+  /// row of the browsed queue is played with maps back the same way.
+  @override
+  int get browserQueueStart =>
+      _publishedQueueStart.clamp(0, _queueList.length);
+
   @override
   Stream<List<MediaItem>> get browserQueueStream => queue;
 
@@ -1934,11 +2122,7 @@ class NicoFyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
     playbackState.add(
       PlaybackState(
         controls: _controls(false),
-        systemActions: const {
-          MediaAction.seek,
-          MediaAction.seekForward,
-          MediaAction.seekBackward,
-        },
+        systemActions: _systemActions,
         androidCompactActionIndices: const [0, 1, 3],
         processingState: AudioProcessingState.ready,
         queueIndex: 0,
@@ -2310,16 +2494,20 @@ class NicoFyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
         return false;
       }
 
-      return await _setAudioSourceAndPlay(
+      final started = await _setAudioSourceAndPlay(
         songData,
         audioSource,
         playback.songUrl,
         playback.isOffline,
         mediaId: mediaId,
         transitionId: transitionId,
-        initialPosition: _consumeRestoredPosition(songData),
+        initialPosition: _restoredPositionFor(songData),
         playWhenReady: playWhenReady,
       );
+      // Whichever song got loaded, the place a restored queue stopped at has
+      // served its purpose: it either was resumed at or was played past.
+      if (started) _clearRestoredPosition();
+      return started;
     } catch (e, stackTrace) {
       logger.log('Error playing song', error: e, stackTrace: stackTrace);
       _failures.lastError = e.toString();
@@ -2640,8 +2828,8 @@ class NicoFyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
         'id': id,
         'ytid': id, // Use radio ID as ytid for compatibility
         'title': name,
-        'artist': genre ?? 'Radio Station',
-        'album': 'Live Stream',
+        'artist': genre ?? _l10n?.radioStation ?? 'Radio Station',
+        'album': _l10n?.liveStream ?? 'Live Stream',
         'highResImage': image,
         'lowResImage': image,
         'duration': null, // Radio streams are live
@@ -2950,10 +3138,13 @@ class NicoFyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
     }
   }
 
+  /// [index] is a row of the queue published to the system, which starts at
+  /// the song playing; the app's own queue view calls [skipToSong] instead.
   @override
   Future<void> skipToQueueItem(int index) async {
     await _startup;
-    await skipToSong(index);
+    if (index < 0) return;
+    await skipToSong(_queueIndexFromVisible(index));
   }
 
   @override
@@ -3244,6 +3435,9 @@ class NicoFyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
       switch (name) {
         case _likeCustomAction:
           await _toggleCurrentSongLike();
+          break;
+        case _radioCustomAction:
+          await startRadio();
           break;
         case 'clearQueue':
           clearQueue();

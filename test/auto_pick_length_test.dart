@@ -37,6 +37,55 @@ void main() {
     expect(matchesAutoPickLength(song), isFalse);
   });
 
+  group('a radio', () {
+    Map<String, dynamic> video(String ytid, {int minutes = 4}) => {
+      'ytid': ytid,
+      'duration': minutes * 60,
+      'isLive': false,
+    };
+
+    List<String?> ytids(List<Map> songs) =>
+        songs.map((song) => song['ytid'] as String?).toList();
+
+    test('takes each song once, none of those already heard', () {
+      autoPickLength.value = 'any';
+      final seen = {'b'};
+
+      final picked = pickRadioSongs(
+        [video('a'), video('b'), video('a'), video('c')],
+        seenYtIds: seen,
+        count: 25,
+      );
+
+      expect(ytids(picked), ['a', 'c']);
+      expect(seen, {'a', 'b', 'c'}, reason: 'the next page skips them');
+    });
+
+    test('keeps to the songs/mixes setting of the song picker', () {
+      autoPickLength.value = 'songs';
+
+      final picked = pickRadioSongs(
+        [video('a'), video('set', minutes: 90), video('c')],
+        seenYtIds: {},
+        count: 25,
+      );
+
+      expect(ytids(picked), ['a', 'c']);
+    });
+
+    test('stops at the length asked for', () {
+      autoPickLength.value = 'any';
+
+      final picked = pickRadioSongs(
+        [video('a'), video('b'), video('c')],
+        seenYtIds: {},
+        count: 2,
+      );
+
+      expect(ytids(picked), ['a', 'b']);
+    });
+  });
+
   test('the threshold itself counts as a mix', () {
     autoPickLength.value = 'mixes';
     expect(

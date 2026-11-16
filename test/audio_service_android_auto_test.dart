@@ -125,6 +125,29 @@ void main() {
       }
     });
 
+    test('the songs already played are left out of the car', () async {
+      host
+        ..queueStart = 1
+        ..playbackIndex = 1
+        ..playbackProgress = 0.25;
+
+      final rows = await browser.children('current_queue');
+
+      expect(rows.map((row) => row.title), ['Second', 'Third']);
+      expect(rows[0].extras?[statusKey], 1, reason: 'playing');
+      expect(rows[0].extras?[percentageKey], 0.25);
+      expect(rows[1].extras?[statusKey], 0, reason: 'still to come');
+    });
+
+    test('a row of the shortened queue plays with its shown index', () async {
+      host.queueStart = 1;
+
+      final rows = await browser.children('current_queue');
+      await browser.playFromMediaId(rows[1].id);
+
+      expect(host.skippedTo, [1], reason: 'Third, second row shown');
+    });
+
     // Everywhere else is a library: what was played earlier says nothing
     // about the row, so marking it would only mislead.
     test('only the queue is marked, not the rest of the tree', () async {
@@ -207,6 +230,14 @@ class _FakeAndroidAutoHost implements AndroidAutoHost {
   @override
   List<Map> get browserQueue => queue;
 
+  /// Where the queue shown in the car starts, as the handler would report it.
+  int queueStart = 0;
+
+  @override
+  int get browserQueueStart => queueStart;
+
+  final List<int> skippedTo = [];
+
   @override
   Stream<List<MediaItem>> get browserQueueStream => const Stream.empty();
 
@@ -253,7 +284,7 @@ class _FakeAndroidAutoHost implements AndroidAutoHost {
   Future<void> resumeAudio() async {}
 
   @override
-  Future<void> skipToQueueItem(int index) async {}
+  Future<void> skipToQueueItem(int index) async => skippedTo.add(index);
 
   @override
   Future<void> playBrowserPlaylist(
