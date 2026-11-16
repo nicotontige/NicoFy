@@ -45,6 +45,7 @@ import 'package:nicofy/services/local_sync_service.dart';
 import 'package:nicofy/services/logger_service.dart';
 import 'package:nicofy/services/playlist_sharing.dart';
 import 'package:nicofy/services/playlists_manager.dart';
+import 'package:nicofy/services/remote_control/remote_control_controller.dart';
 import 'package:nicofy/services/remote_control/remote_playback_host.dart';
 import 'package:nicofy/services/router_service.dart';
 import 'package:nicofy/services/settings_manager.dart';
@@ -58,6 +59,7 @@ import 'package:nicofy/utilities/language_utils.dart';
 import 'package:nicofy/utilities/platform_utils.dart';
 import 'package:nicofy/utilities/playlist_utils.dart';
 import 'package:nicofy/utilities/sharing_intent.dart';
+import 'package:nicofy/widgets/remote_control/remote_device_picker.dart';
 import 'package:nicofy/widgets/text_field_remote_navigation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
@@ -370,6 +372,9 @@ Future<void> initialisation() async {
     }
 
     startRemoteControlHosting(audioHandler);
+    // While this device controls another, what its screens start plays there.
+    audioHandler.playbackRedirect = RemoteControlController.instance
+      ..notify = showRemoteNotice;
 
     if (!kIsWeb && defaultTargetPlatform == TargetPlatform.windows) {
       final artwork = DesktopMediaArtwork();

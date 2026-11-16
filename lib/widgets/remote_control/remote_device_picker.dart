@@ -30,7 +30,9 @@ import 'package:nicofy/extensions/l10n.dart';
 import 'package:nicofy/localization/app_localizations.dart';
 import 'package:nicofy/services/local_sync_service.dart';
 import 'package:nicofy/services/remote_control/remote_control_controller.dart';
+import 'package:nicofy/services/router_service.dart';
 import 'package:nicofy/utilities/device_identity.dart';
+import 'package:nicofy/utilities/flutter_toast.dart';
 
 /// Why controlling [name] did not work, for the user.
 String remoteFailureMessage(
@@ -57,6 +59,37 @@ String _pairingFailureMessage(
   LocalSyncError.unreachable => l10n.remoteErrorUnreachable(name),
   _ => l10n.remoteErrorFailed(name),
 };
+
+/// Says what became of a song sent to the device this one controls.
+void showRemoteNotice(RemoteNotice notice, String deviceName) {
+  final BuildContext context;
+  try {
+    context = NavigationManager().context;
+  } catch (_) {
+    return;
+  }
+  if (!context.mounted) return;
+  final l10n = context.l10n!;
+  final (text, icon) = switch (notice) {
+    RemoteNotice.playing => (
+      l10n.remotePlayingOn(deviceName),
+      FluentIcons.cast_24_regular,
+    ),
+    RemoteNotice.unplayable => (
+      l10n.remoteUnplayable(deviceName),
+      FluentIcons.info_20_regular,
+    ),
+    RemoteNotice.notSent => (
+      l10n.remoteNotSent(deviceName),
+      FluentIcons.error_circle_24_regular,
+    ),
+    RemoteNotice.queueChanged => (
+      l10n.remoteQueueChanged(deviceName),
+      FluentIcons.info_20_regular,
+    ),
+  };
+  showToast(context, text, icon: icon);
+}
 
 /// Lists the NicoFy devices on the network to control one of them, pairing
 /// it first if needed. True once this device controls another.

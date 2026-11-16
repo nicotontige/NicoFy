@@ -76,4 +76,74 @@ class FakeTarget implements RemotePlaybackTarget {
     calls.add('radio');
     return radioSongs;
   }
+
+  @override
+  String entryIdOf(Map song) =>
+      song['queueEntryId']?.toString() ?? 'entry-${song['ytid']}';
+
+  @override
+  Future<void> playList(
+    List<Map> songs, {
+    int? startIndex,
+    bool? shuffle,
+  }) async {
+    calls.add('playList:${songs.length}:$startIndex:$shuffle');
+    queue = [...songs];
+    currentIndex = startIndex ?? 0;
+  }
+
+  @override
+  Future<void> enqueue(
+    List<Map> songs, {
+    bool next = false,
+    int? startIndex,
+  }) async {
+    calls.add('enqueue:${songs.length}:$next:$startIndex');
+    if (next) {
+      queue.insertAll(currentIndex + 1, songs);
+    } else {
+      queue.addAll(songs);
+    }
+  }
+
+  @override
+  Future<void> playSong(Map song) async =>
+      calls.add('playSong:${song['ytid']}');
+
+  bool stationPlays = true;
+
+  @override
+  Future<bool> playStation({
+    required String id,
+    required String name,
+    required String streamUrl,
+    required String image,
+    String? genre,
+  }) async {
+    calls.add('station:$id:$streamUrl');
+    return stationPlays;
+  }
+
+  @override
+  Future<void> removeFromQueue(int index) async {
+    calls.add('remove:$index');
+    queue.removeAt(index);
+  }
+
+  @override
+  Future<void> moveEntry(String entryId, int toIndex) async {
+    calls.add('move:$entryId:$toIndex');
+    final from = queue.indexWhere((song) => entryIdOf(song) == entryId);
+    queue.insert(toIndex, queue.removeAt(from));
+  }
+
+  @override
+  Future<void> clearQueue() async {
+    calls.add('clear');
+    queue = [queue[currentIndex]];
+    currentIndex = 0;
+  }
+
+  @override
+  Future<void> shuffleQueue() async => calls.add('shuffle');
 }

@@ -26,6 +26,7 @@ import 'dart:async';
 import 'package:material_ui/material_ui.dart';
 import 'package:nicofy/main.dart';
 import 'package:nicofy/services/local_sync_service.dart';
+import 'package:nicofy/services/remote_control/playback_redirect.dart';
 import 'package:nicofy/services/remote_control/remote_protocol.dart';
 import 'package:nicofy/services/remote_control/remote_session.dart';
 
@@ -41,6 +42,21 @@ enum RemoteLinkStatus {
 }
 
 enum RemoteFailure { untrusted, remoteOff, updateRequired, unreachable, failed }
+
+/// What the user is told after sending something to the other device.
+enum RemoteNotice {
+  /// It plays there now.
+  playing,
+
+  /// Only this device has it: it cannot play there.
+  unplayable,
+
+  /// It did not get through.
+  notSent,
+
+  /// The queue there moved meanwhile; the list was refreshed.
+  queueChanged,
+}
 
 /// What the remote knows of the device it controls.
 class RemoteControlState {
@@ -86,7 +102,7 @@ class RemoteControlState {
 /// This device as the remote of another one: one connection at a time,
 /// refreshed every second while the app is in front. The position moves on
 /// by itself between two refreshes.
-class RemoteControlController {
+class RemoteControlController implements PlaybackRedirect {
   RemoteControlController._();
 
   static final RemoteControlController instance = RemoteControlController._();
@@ -101,7 +117,16 @@ class RemoteControlController {
 
   Duration get clock => _stopwatch.elapsed;
 
+  @override
   bool get isActive => state.value != null;
+
+  /// Tells the user about a [RemoteNotice], with the other device's name.
+  void Function(RemoteNotice notice, String deviceName)? notify;
+
+  void _notify(RemoteNotice notice) {
+    final name = state.value?.name;
+    if (name != null) notify?.call(notice, name);
+  }
 
   RemoteControlClient? _client;
   Timer? _timer;
@@ -382,4 +407,154 @@ class RemoteControlController {
     if (reply == null) return null;
     return reply.added ?? 0;
   }
+
+  // What the screens of this device start goes there (see PlaybackRedirect).
+
+  @override
+  Future<void> playList(
+    List<Map> songs, {
+    int? startIndex,
+    bool? shuffle,
+  }) async {
+    final window = remoteListWindow(
+      songs,
+      startIndex: startIndex,
+      shuffle: shuffle ?? false,
+    );
+    if (window.songs.isEmpty ||
+        (startIndex != null && window.startIndex == null)) {
+      _notify(RemoteNotice.unplayable);
+      return;
+    }
+    final reply = await _send(
+      RemoteCommand.playList(
+        window.songs,
+        startIndex: window.startIndex,
+        shuffle: shuffle,
+      ),
+    );
+    _notify(reply == null ? RemoteNotice.notSent : RemoteNotice.playing);
+  }
+
+  @override
+  Future<void> enqueue(
+    List<Map> songs, {
+    bool next = false,
+    int? startIndex,
+  }) async {
+    final window = remoteListWindow(songs, startIndex: startIndex);
+    if (window.songs.isEmpty ||
+        (startIndex != null && window.startIndex == null)) {
+      _notify(RemoteNotice.unplayable);
+      return;
+    }
+    final reply = await _send(
+      RemoteCommand.enqueue(
+        window.songs,
+        next: next,
+        startIndex: window.startIndex,
+      ),
+    );
+    // The screens already say a song was added; only a failure is news.
+    if (reply == null) {
+      _notify(RemoteNotice.notSent);
+    } else if (startIndex != null) {
+      _notify(RemoteNotice.playing);
+    }
+  }
+
+  @override
+  Future<void> playSong(Map song) async {
+    final sendable = remoteSong(song);
+    if (sendable == null) {
+      _notify(RemoteNotice.unplayable);
+      return;
+    }
+    final reply = await _send(RemoteCommand.playSong(sendable));
+    _notify(reply == null ? RemoteNotice.notSent : RemoteNotice.playing);
+  }
+
+  @override
+  Future<bool> playStation({
+    required String id,
+    required String name,
+    required String streamUrl,
+    required String image,
+    String? genre,
+  }) async {
+    final reply = await _send(
+      RemoteCommand.playStation(
+        id: id,
+        name: name,
+        streamUrl: streamUrl,
+        image: image,
+        genre: genre,
+      ),
+    );
+    if (reply == null || reply.error != null) return false;
+    _notify(RemoteNotice.playing);
+    return true;
+  }
+
+  // The queue over there, edited from here. Each edit shows at once and is
+  // then confirmed, or put right, by the queue the reply carries.
+
+  void _assumeQueue(List<RemoteTrack> Function(List<RemoteTrack>) edit) {
+    final current = state.value;
+    if (current == null) return;
+    state.value = current.copyWith(upcoming: edit([...current.upcoming]));
+  }
+
+  Future<void> _sendQueueEdit(RemoteCommand command) async {
+    final reply = await _send(command);
+    if (reply == null) {
+      _notify(RemoteNotice.notSent);
+      // Whatever the list shows now, the next refresh brings the real one.
+      _knownQueue = null;
+    } else if (reply.error == RemoteCommandError.queueChanged) {
+      _notify(RemoteNotice.queueChanged);
+    }
+  }
+
+  Future<void> removeEntry(RemoteTrack track) async {
+    _assumeQueue(
+      (upcoming) => upcoming..removeWhere((t) => t.entryId == track.entryId),
+    );
+    await _sendQueueEdit(RemoteCommand.removeEntry(track));
+  }
+
+  /// Moves [track] to [viewIndex] in the list of songs to come, counted
+  /// once [track] is out of it.
+  Future<void> moveEntry(RemoteTrack track, int viewIndex) async {
+    final upcoming = state.value?.upcoming ?? const [];
+    if (upcoming.isEmpty) return;
+    final target = viewIndex.clamp(0, upcoming.length - 1);
+    // The list is the queue from the song after the current one on, so a
+    // place in it is a queue index from there.
+    final toIndex = upcoming.first.index + target;
+    _assumeQueue((list) {
+      final moving = list.indexWhere((t) => t.entryId == track.entryId);
+      if (moving == -1) return list;
+      final item = list.removeAt(moving);
+      return list..insert(target.clamp(0, list.length), item);
+    });
+    await _sendQueueEdit(RemoteCommand.moveEntry(track, toIndex));
+  }
+
+  Future<void> playEntryNext(RemoteTrack track) async {
+    _assumeQueue((list) {
+      final moving = list.indexWhere((t) => t.entryId == track.entryId);
+      if (moving <= 0) return list;
+      return list..insert(0, list.removeAt(moving));
+    });
+    await _sendQueueEdit(RemoteCommand.playEntryNext(track));
+  }
+
+  Future<void> clearQueue() async {
+    _assumeQueue((_) => []);
+    await _sendQueueEdit(const RemoteCommand.clearQueue());
+  }
+
+  Future<void> shuffleQueue() =>
+      _sendQueueEdit(const RemoteCommand.shuffleQueue());
 }

@@ -41,6 +41,7 @@ import 'package:nicofy/services/data_manager.dart';
 import 'package:nicofy/services/listening_stats_service.dart';
 import 'package:nicofy/services/playback_failure_recovery.dart';
 import 'package:nicofy/services/queue_persistence_service.dart';
+import 'package:nicofy/services/remote_control/playback_redirect.dart';
 import 'package:nicofy/services/settings_manager.dart';
 import 'package:nicofy/services/stream_buffer_service.dart';
 import 'package:nicofy/utilities/app_utils.dart';
@@ -1296,7 +1297,11 @@ class NicoFyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
         count: radioLength,
       ).timeout(_radioFetchTimeout, onTimeout: () => const []);
     } catch (e, stackTrace) {
-      logger.log('Error fetching radio songs', error: e, stackTrace: stackTrace);
+      logger.log(
+        'Error fetching radio songs',
+        error: e,
+        stackTrace: stackTrace,
+      );
       related = const [];
     }
 
@@ -1381,7 +1386,23 @@ class NicoFyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
     }
   }
 
-  Future<void> addToQueue(Map song, {bool playNext = false}) async {
+  /// Where the songs the screens start play instead, see [PlaybackRedirect].
+  PlaybackRedirect? playbackRedirect;
+
+  PlaybackRedirect? get _redirect {
+    final redirect = playbackRedirect;
+    return redirect != null && redirect.isActive ? redirect : null;
+  }
+
+  /// Adds [song] to the queue, on the device this one controls if it does.
+  Future<void> addToQueue(Map song, {bool playNext = false}) {
+    final redirect = _redirect;
+    if (redirect != null) return redirect.enqueue([song], next: playNext);
+    return addToQueueHere(song, playNext: playNext);
+  }
+
+  /// [addToQueue] on this device's own player.
+  Future<void> addToQueueHere(Map song, {bool playNext = false}) async {
     try {
       if (song['ytid'] == null || song['ytid'].toString().isEmpty) {
         logger.log('Invalid song data for queue');
@@ -1494,7 +1515,30 @@ class NicoFyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
     });
   }
 
+  /// Queues [songs], replacing the queue when [replace]; on the device this
+  /// one controls if it does.
   Future<void> addPlaylistToQueue(
+    List<Map> songs, {
+    bool replace = false,
+    int? startIndex,
+    bool? shuffle,
+  }) {
+    final redirect = _redirect;
+    if (redirect != null) {
+      return replace
+          ? redirect.playList(songs, startIndex: startIndex, shuffle: shuffle)
+          : redirect.enqueue(songs, startIndex: startIndex);
+    }
+    return addPlaylistToQueueHere(
+      songs,
+      replace: replace,
+      startIndex: startIndex,
+      shuffle: shuffle,
+    );
+  }
+
+  /// [addPlaylistToQueue] on this device's own player.
+  Future<void> addPlaylistToQueueHere(
     List<Map> songs, {
     bool replace = false,
     int? startIndex,
@@ -1832,7 +1876,7 @@ class NicoFyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
 
       _emitOptimisticLoadingState(mediaId: uniqueId);
 
-      final success = await playSong(
+      final success = await playSongHere(
         _queueList[index],
         mediaId: uniqueId,
         transitionId: currentTransitionId,
@@ -2046,13 +2090,11 @@ class NicoFyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
       return;
     }
 
-    await playPlaylistSong(
-      playlist: {
-        'title': 'NicoFy',
-        'source': 'system-recent',
-        'list': [normalisedSong],
-      },
-      songIndex: 0,
+    // Asked by the system (a media button, the car): it plays here.
+    await addPlaylistToQueueHere(
+      [normalisedSong],
+      replace: true,
+      startIndex: 0,
     );
   }
 
@@ -2064,8 +2106,7 @@ class NicoFyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
   /// The same start as the queue published to the session, so the index a
   /// row of the browsed queue is played with maps back the same way.
   @override
-  int get browserQueueStart =>
-      _publishedQueueStart.clamp(0, _queueList.length);
+  int get browserQueueStart => _publishedQueueStart.clamp(0, _queueList.length);
 
   @override
   Stream<List<MediaItem>> get browserQueueStream => queue;
@@ -2078,8 +2119,10 @@ class NicoFyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
     final duration = audioPlayer.duration;
     final progress = duration == null || duration <= Duration.zero
         ? null
-        : (audioPlayer.position.inMilliseconds / duration.inMilliseconds)
-              .clamp(0.0, 1.0);
+        : (audioPlayer.position.inMilliseconds / duration.inMilliseconds).clamp(
+            0.0,
+            1.0,
+          );
 
     return (index: _currentQueueIndex, progress: progress);
   }
@@ -2101,11 +2144,11 @@ class NicoFyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
 
   @override
   Future<void> playBrowserPlaylist(List<Map> songs, {required int songIndex}) =>
-      addPlaylistToQueue(songs, replace: true, startIndex: songIndex);
+      addPlaylistToQueueHere(songs, replace: true, startIndex: songIndex);
 
   @override
   Future<void> shuffleBrowserPlaylist(List<Map> songs) =>
-      addPlaylistToQueue(songs, replace: true, shuffle: true);
+      addPlaylistToQueueHere(songs, replace: true, shuffle: true);
 
   @override
   void publishPreparedBrowserItem(MediaItem item) {
@@ -2429,7 +2472,17 @@ class NicoFyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
     return transitionId != null && transitionId != _currentLoadingTransitionId;
   }
 
-  Future<bool> playSong(
+  /// Plays [song], the queue left as it is; on the device this one controls
+  /// if it does.
+  Future<bool> playSong(Map song) async {
+    final redirect = _redirect;
+    if (redirect == null) return playSongHere(song);
+    await redirect.playSong(song);
+    return true;
+  }
+
+  /// [playSong] on this device's own player.
+  Future<bool> playSongHere(
     Map song, {
     String? mediaId,
     int? transitionId,
@@ -2814,8 +2867,36 @@ class NicoFyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
     }
   }
 
-  /// Play a radio stream directly without queue management
+  /// Play a radio stream directly without queue management; on the device
+  /// this one controls if it does.
   Future<bool> playRadioStream({
+    required String id,
+    required String name,
+    required String streamUrl,
+    required String image,
+    String? genre,
+  }) {
+    final redirect = _redirect;
+    if (redirect != null) {
+      return redirect.playStation(
+        id: id,
+        name: name,
+        streamUrl: streamUrl,
+        image: image,
+        genre: genre,
+      );
+    }
+    return playRadioStreamHere(
+      id: id,
+      name: name,
+      streamUrl: streamUrl,
+      image: image,
+      genre: genre,
+    );
+  }
+
+  /// [playRadioStream] on this device's own player.
+  Future<bool> playRadioStreamHere({
     required String id,
     required String name,
     required String streamUrl,
@@ -3444,7 +3525,7 @@ class NicoFyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
           break;
         case 'addToQueue':
           if (extras?['song'] != null) {
-            await addToQueue(
+            await addToQueueHere(
               extras!['song'] as Map,
               playNext: extras['playNext'] ?? false,
             );

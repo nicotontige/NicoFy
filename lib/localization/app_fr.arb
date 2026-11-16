@@ -611,5 +611,21 @@
         "type": "String"
       }
     }
+  },
+  "remoteUnplayable": "Ce titre n'existe que sur cet appareil : il ne peut pas être lu sur {device}.",
+  "@remoteUnplayable": {
+    "placeholders": {
+      "device": {
+        "type": "String"
+      }
+    }
+  },
+  "remoteNotSent": "Impossible de l'envoyer à {device}. Vérifiez que les deux appareils sont sur le même Wi-Fi.",
+  "@remoteNotSent": {
+    "placeholders": {
+      "device": {
+        "type": "String"
+      }
+    }
   }
 }

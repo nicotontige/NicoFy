@@ -79,17 +79,20 @@ class RemoteTrack {
     this.artworkUrl,
     this.durationMs,
     this.isLive = false,
+    this.entryId = '',
   });
 
-  factory RemoteTrack.fromSong(Map song, int index) => RemoteTrack(
-    index: index,
-    ytid: _text(song['ytid'], 64),
-    title: _text(song['title'], 300),
-    artist: _text(song['artist'], 300).trim(),
-    artworkUrl: remoteArtworkUrl(song),
-    durationMs: _songDurationMs(song['duration']),
-    isLive: song['isLive'] == true,
-  );
+  factory RemoteTrack.fromSong(Map song, int index, {String entryId = ''}) =>
+      RemoteTrack(
+        index: index,
+        entryId: _text(entryId, 128),
+        ytid: _text(song['ytid'], 64),
+        title: _text(song['title'], 300),
+        artist: _text(song['artist'], 300).trim(),
+        artworkUrl: remoteArtworkUrl(song),
+        durationMs: _songDurationMs(song['duration']),
+        isLive: song['isLive'] == true,
+      );
 
   /// Throws [FormatException] when [map] is not a track.
   factory RemoteTrack.fromMap(Object? map) {
@@ -108,6 +111,7 @@ class RemoteTrack {
           : null,
       durationMs: _nonNegativeInt(map['durationMs']),
       isLive: map['live'] == true,
+      entryId: _text(map['entry'], 128),
     );
   }
 
@@ -121,8 +125,25 @@ class RemoteTrack {
   final int? durationMs;
   final bool isLive;
 
+  /// The entry's id in the queue over there: it stays the same while the
+  /// songs around it move, so a queue edit reaches the song that was shown.
+  final String entryId;
+
+  /// As a song of this device's library, for what stays here: liking it,
+  /// adding it to a playlist, downloading it.
+  Map<String, dynamic> toSong() => {
+    'ytid': ytid,
+    'title': title,
+    'artist': artist,
+    if (artworkUrl != null) 'highResImage': artworkUrl,
+    if (artworkUrl != null) 'lowResImage': artworkUrl,
+    if (durationMs != null) 'duration': durationMs! ~/ 1000,
+    if (isLive) 'isLive': true,
+  };
+
   Map<String, dynamic> toMap() => {
     'index': index,
+    if (entryId.isNotEmpty) 'entry': entryId,
     'ytid': ytid,
     'title': title,
     'artist': artist,
@@ -243,60 +264,338 @@ class RemoteSnapshot {
   };
 }
 
-enum RemoteAction { play, pause, next, previous, seek, skipTo, radio }
+enum RemoteAction {
+  play,
+  pause,
+  next,
+  previous,
+  seek,
+  skipTo,
+  radio,
+
+  /// Replaces the queue with a list and plays it from one of its songs.
+  playList,
+
+  /// Adds songs to the queue, after the current one or at its end.
+  enqueue,
+
+  /// Plays one song, the queue left as it is.
+  playSong,
+
+  /// Plays a radio station's stream.
+  playStation,
+  removeEntry,
+  moveEntry,
+
+  /// Brings a queued song right after the current one.
+  playEntryNext,
+  clearQueue,
+  shuffleQueue,
+}
+
+/// How many songs a list sent to the other device may hold. A bigger list is
+/// cut around the song it starts from (see [remoteListWindow]).
+const int remoteListLimit = 500;
+
+/// The keys of a song that are worth sending: what it takes to play it there
+/// and show it. Paths of files on this device are left out.
+const _songKeys = {
+  'ytid',
+  'title',
+  'artist',
+  'album',
+  'artistId',
+  'videoAuthor',
+  'duration',
+  'isLive',
+};
+
+/// [song] as sent to the other device; null when it cannot play there, as it
+/// has no YouTube id.
+Map<String, dynamic>? remoteSong(Object? song) {
+  if (song is! Map) return null;
+  final ytid = song['ytid']?.toString() ?? '';
+  if (ytid.isEmpty || ytid.length > 64) return null;
+  final result = <String, dynamic>{};
+  for (final key in _songKeys) {
+    final value = song[key];
+    if (value is String) {
+      result[key] = _text(value, 300);
+    } else if (value is num && value.isFinite) {
+      result[key] = value;
+    } else if (value is bool) {
+      result[key] = value;
+    }
+  }
+  for (final key in ['highResImage', 'lowResImage']) {
+    final url = remoteArtworkUrl({'image': song[key]});
+    if (url != null) result[key] = url;
+  }
+  return result;
+}
+
+/// The part of [songs] that is sent to play from [startIndex]: the songs that
+/// can play there, at most [remoteListLimit] of them, a few before the start
+/// and the rest after it. A shuffled list is shuffled here first, so that the
+/// cut does not always keep the same songs. [startIndex] is null when the
+/// song it pointed at cannot play there.
+({List<Map<String, dynamic>> songs, int? startIndex}) remoteListWindow(
+  List<Map> songs, {
+  int? startIndex,
+  bool shuffle = false,
+  Random? random,
+}) {
+  final sendable = <Map<String, dynamic>>[];
+  int? start;
+  for (var i = 0; i < songs.length; i++) {
+    final song = remoteSong(songs[i]);
+    if (song == null) continue;
+    if (i == startIndex) start = sendable.length;
+    sendable.add(song);
+  }
+  if (sendable.length <= remoteListLimit) {
+    return (songs: sendable, startIndex: start);
+  }
+  if (shuffle) {
+    final first = start == null ? null : sendable.removeAt(start);
+    sendable.shuffle(random);
+    return (
+      songs: [
+        ?first,
+        ...sendable.take(remoteListLimit - (first == null ? 0 : 1)),
+      ],
+      startIndex: first == null ? null : 0,
+    );
+  }
+  const before = 50;
+  final from = start == null
+      ? 0
+      : max(0, min(start - before, sendable.length - remoteListLimit));
+  return (
+    songs: sendable.sublist(from, from + remoteListLimit),
+    startIndex: start == null ? null : start - from,
+  );
+}
+
+List<Map<String, dynamic>> _songs(Object? raw) {
+  if (raw is! List || raw.isEmpty || raw.length > remoteListLimit) {
+    throw const FormatException('Invalid song list');
+  }
+  return [
+    for (final song in raw)
+      remoteSong(song) ?? (throw const FormatException('Invalid song')),
+  ];
+}
+
+String _entry(Object? raw) {
+  if (raw is! String || raw.isEmpty || raw.length > 128) {
+    throw const FormatException('Invalid queue entry');
+  }
+  return raw;
+}
+
+bool _isWebUrl(Object? raw) {
+  if (raw is! String || raw.length > 2048) return false;
+  final uri = Uri.tryParse(raw);
+  return uri != null &&
+      (uri.scheme == 'https' || uri.scheme == 'http') &&
+      uri.host.isNotEmpty;
+}
 
 /// Something the remote asks the controlled device to do.
 class RemoteCommand {
-  const RemoteCommand._(this.action, {this.positionMs, this.index, this.ytid});
+  const RemoteCommand._(this.action, [this.args = const {}]);
 
   const RemoteCommand.play() : this._(RemoteAction.play);
   const RemoteCommand.pause() : this._(RemoteAction.pause);
   const RemoteCommand.next() : this._(RemoteAction.next);
   const RemoteCommand.previous() : this._(RemoteAction.previous);
   const RemoteCommand.radio() : this._(RemoteAction.radio);
+  const RemoteCommand.clearQueue() : this._(RemoteAction.clearQueue);
+  const RemoteCommand.shuffleQueue() : this._(RemoteAction.shuffleQueue);
 
   RemoteCommand.seek(Duration position)
-    : this._(RemoteAction.seek, positionMs: max(0, position.inMilliseconds));
+    : this._(RemoteAction.seek, {
+        'positionMs': max(0, position.inMilliseconds),
+      });
 
   /// Plays [track]; refused if the queue there moved since it was listed.
   RemoteCommand.skipTo(RemoteTrack track)
-    : this._(RemoteAction.skipTo, index: track.index, ytid: track.ytid);
+    : this._(RemoteAction.skipTo, {
+        'index': track.index,
+        'ytid': track.ytid,
+        if (track.entryId.isNotEmpty) 'entry': track.entryId,
+      });
+
+  /// [songs] as made by [remoteListWindow]; [shuffle] null leaves it to the
+  /// other device's shuffle setting.
+  RemoteCommand.playList(
+    List<Map<String, dynamic>> songs, {
+    int? startIndex,
+    bool? shuffle,
+  }) : this._(RemoteAction.playList, {
+         'songs': songs,
+         'startIndex': ?startIndex,
+         'shuffle': ?shuffle,
+       });
+
+  RemoteCommand.enqueue(
+    List<Map<String, dynamic>> songs, {
+    bool next = false,
+    int? startIndex,
+  }) : this._(RemoteAction.enqueue, {
+         'songs': songs,
+         if (next) 'next': true,
+         'startIndex': ?startIndex,
+       });
+
+  RemoteCommand.playSong(Map<String, dynamic> song)
+    : this._(RemoteAction.playSong, {'song': song});
+
+  RemoteCommand.playStation({
+    required String id,
+    required String name,
+    required String streamUrl,
+    required String image,
+    String? genre,
+  }) : this._(RemoteAction.playStation, {
+         'id': id,
+         'name': name,
+         'streamUrl': streamUrl,
+         'image': image,
+         'genre': ?genre,
+       });
+
+  RemoteCommand.removeEntry(RemoteTrack track)
+    : this._(RemoteAction.removeEntry, {'entry': track.entryId});
+
+  /// Moves [track] to [toIndex], an index of the whole queue over there.
+  RemoteCommand.moveEntry(RemoteTrack track, int toIndex)
+    : this._(RemoteAction.moveEntry, {
+        'entry': track.entryId,
+        'toIndex': max(0, toIndex),
+      });
+
+  RemoteCommand.playEntryNext(RemoteTrack track)
+    : this._(RemoteAction.playEntryNext, {'entry': track.entryId});
 
   /// Throws [FormatException] for anything the protocol does not define.
   factory RemoteCommand.fromMap(Map map) {
     final action = RemoteAction.values
         .where((value) => value.name == map['action'])
         .firstOrNull;
+    if (action == null) throw const FormatException('Unknown remote action');
+    int? optionalIndex(String key) {
+      final value = map[key];
+      if (value == null) return null;
+      return _nonNegativeInt(value) ??
+          (throw const FormatException('Invalid index'));
+    }
+
     switch (action) {
-      case null:
-        throw const FormatException('Unknown remote action');
       case RemoteAction.seek:
         final position = _nonNegativeInt(map['positionMs']);
         if (position == null) throw const FormatException('Invalid seek');
-        return RemoteCommand._(action, positionMs: position);
+        return RemoteCommand._(action, {'positionMs': position});
       case RemoteAction.skipTo:
         final index = _nonNegativeInt(map['index']);
         final ytid = map['ytid'];
         if (index == null || ytid is! String) {
           throw const FormatException('Invalid skip');
         }
-        return RemoteCommand._(action, index: index, ytid: ytid);
-      default:
+        return RemoteCommand._(action, {
+          'index': index,
+          'ytid': ytid,
+          if (map['entry'] != null) 'entry': _entry(map['entry']),
+        });
+      case RemoteAction.playList:
+        final shuffle = map['shuffle'];
+        if (shuffle != null && shuffle is! bool) {
+          throw const FormatException('Invalid shuffle');
+        }
+        final songs = _songs(map['songs']);
+        final start = optionalIndex('startIndex');
+        if (start != null && start >= songs.length) {
+          throw const FormatException('Invalid start');
+        }
+        return RemoteCommand._(action, {
+          'songs': songs,
+          'startIndex': ?start,
+          'shuffle': ?shuffle,
+        });
+      case RemoteAction.enqueue:
+        final songs = _songs(map['songs']);
+        final start = optionalIndex('startIndex');
+        if (start != null && start >= songs.length) {
+          throw const FormatException('Invalid start');
+        }
+        return RemoteCommand._(action, {
+          'songs': songs,
+          if (map['next'] == true) 'next': true,
+          'startIndex': ?start,
+        });
+      case RemoteAction.playSong:
+        final song = remoteSong(map['song']);
+        if (song == null) throw const FormatException('Invalid song');
+        return RemoteCommand._(action, {'song': song});
+      case RemoteAction.playStation:
+        final id = map['id'];
+        final name = map['name'];
+        final image = map['image'];
+        final genre = map['genre'];
+        if (id is! String ||
+            id.isEmpty ||
+            name is! String ||
+            !_isWebUrl(map['streamUrl']) ||
+            (genre != null && genre is! String)) {
+          throw const FormatException('Invalid station');
+        }
+        return RemoteCommand._(action, {
+          'id': _text(id, 128),
+          'name': _text(name, 300),
+          'streamUrl': map['streamUrl'],
+          'image': _isWebUrl(image) ? image : '',
+          'genre': ?(genre == null ? null : _text(genre, 300)),
+        });
+      case RemoteAction.removeEntry:
+      case RemoteAction.playEntryNext:
+        return RemoteCommand._(action, {'entry': _entry(map['entry'])});
+      case RemoteAction.moveEntry:
+        final toIndex = _nonNegativeInt(map['toIndex']);
+        if (toIndex == null) throw const FormatException('Invalid move');
+        return RemoteCommand._(action, {
+          'entry': _entry(map['entry']),
+          'toIndex': toIndex,
+        });
+      case RemoteAction.play:
+      case RemoteAction.pause:
+      case RemoteAction.next:
+      case RemoteAction.previous:
+      case RemoteAction.radio:
+      case RemoteAction.clearQueue:
+      case RemoteAction.shuffleQueue:
         return RemoteCommand._(action);
     }
   }
 
   final RemoteAction action;
-  final int? positionMs;
-  final int? index;
-  final String? ytid;
 
-  Map<String, dynamic> toMap() => {
-    'action': action.name,
-    if (positionMs != null) 'positionMs': positionMs,
-    if (index != null) 'index': index,
-    if (ytid != null) 'ytid': ytid,
-  };
+  /// What goes with [action], already checked when it came from the network.
+  final Map<String, dynamic> args;
+
+  int? get positionMs => args['positionMs'] as int?;
+  int? get index => args['index'] as int?;
+  String? get ytid => args['ytid'] as String?;
+  String? get entryId => args['entry'] as String?;
+  int? get startIndex => args['startIndex'] as int?;
+  int? get toIndex => args['toIndex'] as int?;
+  bool? get shuffle => args['shuffle'] as bool?;
+  bool get playNext => args['next'] == true;
+  List<Map<String, dynamic>> get songs =>
+      (args['songs'] as List? ?? const []).cast<Map<String, dynamic>>();
+  Map<String, dynamic>? get song => args['song'] as Map<String, dynamic>?;
+
+  Map<String, dynamic> toMap() => {'action': action.name, ...args};
 }
 
 /// The player a remote drives: the audio handler in the app, a fake in tests.
@@ -312,6 +611,9 @@ abstract class RemotePlaybackTarget {
   bool get canSkipToNext;
   bool get hasPrevious;
 
+  /// The id of a queue entry, which does not change while it moves.
+  String entryIdOf(Map song);
+
   Future<void> play();
   Future<void> pause();
   Future<void> skipToNext();
@@ -323,18 +625,45 @@ abstract class RemotePlaybackTarget {
 
   /// Returns how many songs were queued.
   Future<int> startRadio();
+
+  /// Replaces the queue with [songs], playing from [startIndex].
+  Future<void> playList(List<Map> songs, {int? startIndex, bool? shuffle});
+
+  /// Adds [songs] after the current song when [next], else at the end,
+  /// playing from [startIndex] when given.
+  Future<void> enqueue(List<Map> songs, {bool next = false, int? startIndex});
+
+  Future<void> playSong(Map song);
+
+  Future<bool> playStation({
+    required String id,
+    required String name,
+    required String streamUrl,
+    required String image,
+    String? genre,
+  });
+
+  Future<void> removeFromQueue(int index);
+
+  /// Moves the entry [entryId] to [toIndex] in the whole queue.
+  Future<void> moveEntry(String entryId, int toIndex);
+  Future<void> clearQueue();
+  Future<void> shuffleQueue();
 }
 
 /// Identifies the songs after the current one, cheaply, so an unchanged
 /// queue is not sent again every second. It only has to differ from what the
 /// same device said before, never to mean anything elsewhere.
-String remoteQueueSignature(List<Map> queue, int currentIndex) {
+String remoteQueueSignature(
+  List<Map> queue,
+  int currentIndex, [
+  String Function(Map song)? entryIdOf,
+]) {
   final end = min(queue.length, currentIndex + 1 + remoteQueueLimit);
   final start = min(max(currentIndex, 0), end);
-  final ids = [
-    for (var i = start; i < end; i++)
-      '${queue[i]['ytid']}\u0000${queue[i]['title']}',
-  ];
+  String id(Map song) =>
+      '${song['ytid']}\u0000${song['title']}\u0000${entryIdOf?.call(song)}';
+  final ids = [for (var i = start; i < end; i++) id(queue[i])];
   return '$currentIndex:${queue.length}:${Object.hashAll(ids)}';
 }
 
@@ -347,8 +676,10 @@ RemoteSnapshot buildRemoteSnapshot(
   final queue = target.queue;
   final index = target.currentIndex;
   final hasTrack = index >= 0 && index < queue.length;
-  final signature = remoteQueueSignature(queue, index);
-  final track = hasTrack ? RemoteTrack.fromSong(queue[index], index) : null;
+  final signature = remoteQueueSignature(queue, index, target.entryIdOf);
+  RemoteTrack trackAt(int i) =>
+      RemoteTrack.fromSong(queue[i], i, entryId: target.entryIdOf(queue[i]));
+  final track = hasTrack ? trackAt(index) : null;
   final duration = target.duration;
   return RemoteSnapshot(
     track: track,
@@ -371,13 +702,13 @@ RemoteSnapshot buildRemoteSnapshot(
                 i < min(queue.length, index + 1 + remoteQueueLimit);
                 i++
               )
-                RemoteTrack.fromSong(queue[i], i),
+                trackAt(i),
           ],
   );
 }
 
 /// Why a command was refused, as sent back to the remote.
-enum RemoteCommandError { queueChanged, nothingPlaying }
+enum RemoteCommandError { queueChanged, nothingPlaying, unplayable }
 
 /// Runs [command] on [target]. Waits at most [settle] for it, so the reply
 /// can already show the result of a quick command, while a slow one (loading
@@ -396,6 +727,16 @@ Future<({RemoteCommandError? error, int? added})> dispatchRemoteCommand(
     await Future.any([future.catchError((_) {}), Future<void>.delayed(settle)]);
   }
 
+  const done = (error: null, added: null);
+  const queueChanged = (error: RemoteCommandError.queueChanged, added: null);
+  final queue = target.queue;
+  final current = target.currentIndex;
+
+  /// Where the entry the remote showed is now, -1 when it is gone.
+  int entryIndex(String? entryId) => entryId == null
+      ? -1
+      : queue.indexWhere((song) => target.entryIdOf(song) == entryId);
+
   switch (command.action) {
     case RemoteAction.play:
       await run(target.play);
@@ -413,19 +754,19 @@ Future<({RemoteCommandError? error, int? added})> dispatchRemoteCommand(
       }
       await run(() => target.seek(position));
     case RemoteAction.skipTo:
-      final queue = target.queue;
-      final index = command.index!;
       // The list the remote tapped in may be a second old: never play
       // another song than the one shown.
-      if (index >= queue.length ||
+      var index = command.index!;
+      if (command.entryId != null) {
+        index = entryIndex(command.entryId);
+        if (index == -1) return queueChanged;
+      } else if (index >= queue.length ||
           (queue[index]['ytid']?.toString() ?? '') != command.ytid) {
-        return (error: RemoteCommandError.queueChanged, added: null);
+        return queueChanged;
       }
       await run(() => target.skipToSong(index));
     case RemoteAction.radio:
-      final queue = target.queue;
-      final index = target.currentIndex;
-      if (index < 0 || index >= queue.length) {
+      if (current < 0 || current >= queue.length) {
         return (error: RemoteCommandError.nothingPlaying, added: null);
       }
       // The remote wants to know whether it worked: wait for it, the radio
@@ -436,6 +777,60 @@ Future<({RemoteCommandError? error, int? added})> dispatchRemoteCommand(
         onError?.call(e, stackTrace);
         return (error: null, added: 0);
       }
+    case RemoteAction.playList:
+      await run(
+        () => target.playList(
+          command.songs,
+          startIndex: command.startIndex,
+          shuffle: command.shuffle,
+        ),
+      );
+    case RemoteAction.enqueue:
+      await run(
+        () => target.enqueue(
+          command.songs,
+          next: command.playNext,
+          startIndex: command.startIndex,
+        ),
+      );
+    case RemoteAction.playSong:
+      await run(() => target.playSong(command.song!));
+    case RemoteAction.playStation:
+      final args = command.args;
+      // A stream starts quickly, or not at all: wait to say which.
+      try {
+        final started = await target.playStation(
+          id: args['id'] as String,
+          name: args['name'] as String,
+          streamUrl: args['streamUrl'] as String,
+          image: args['image'] as String,
+          genre: args['genre'] as String?,
+        );
+        if (started) return done;
+      } catch (e, stackTrace) {
+        onError?.call(e, stackTrace);
+      }
+      return (error: RemoteCommandError.unplayable, added: null);
+    case RemoteAction.removeEntry:
+      final index = entryIndex(command.entryId);
+      if (index == -1) return queueChanged;
+      await run(() => target.removeFromQueue(index));
+    case RemoteAction.moveEntry:
+      final index = entryIndex(command.entryId);
+      // Only the songs still to come move, and never above the one playing.
+      if (index == -1 || index <= current) return queueChanged;
+      final to = command.toIndex!.clamp(current + 1, queue.length - 1);
+      await run(() => target.moveEntry(command.entryId!, to));
+    case RemoteAction.playEntryNext:
+      final index = entryIndex(command.entryId);
+      if (index == -1 || index <= current) return queueChanged;
+      if (index > current + 1) {
+        await run(() => target.moveEntry(command.entryId!, current + 1));
+      }
+    case RemoteAction.clearQueue:
+      await run(target.clearQueue);
+    case RemoteAction.shuffleQueue:
+      await run(target.shuffleQueue);
   }
-  return (error: null, added: null);
+  return done;
 }

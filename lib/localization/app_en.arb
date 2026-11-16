@@ -611,5 +611,21 @@
         "type": "String"
       }
     }
+  },
+  "remoteUnplayable": "This song is only on this device: it can't play on {device}.",
+  "@remoteUnplayable": {
+    "placeholders": {
+      "device": {
+        "type": "String"
+      }
+    }
+  },
+  "remoteNotSent": "Couldn't send it to {device}. Check that both devices are on the same Wi-Fi.",
+  "@remoteNotSent": {
+    "placeholders": {
+      "device": {
+        "type": "String"
+      }
+    }
   }
 }

@@ -50,6 +50,10 @@ const String remoteCommandPath = '/api/remote/command';
 const String remoteDeviceHeader = 'x-musify-device';
 const String remoteSessionHeader = 'x-nicofy-remote-session';
 
+/// The largest request a remote sends: a list of [remoteListLimit] songs is
+/// about 200 KB of JSON, a quarter of that once compressed and encrypted.
+const int remoteMaxRequestBytes = 1024 * 1024;
+
 /// An answer other than success, from the device or on the way to it.
 class RemoteRequestFailure implements Exception {
   const RemoteRequestFailure(this.status, this.code);
@@ -389,10 +393,17 @@ class RemoteControlClient {
     RemoteCommand command, {
     String? knownQueue,
   }) async {
-    final reply = await _request(remoteCommandPath, {
-      'command': command.toMap(),
-      if (knownQueue != null) 'knownQueue': knownQueue,
-    }, command.action == RemoteAction.radio ? radioTimeout : commandTimeout);
+    final reply = await _request(
+      remoteCommandPath,
+      {
+        'command': command.toMap(),
+        if (knownQueue != null) 'knownQueue': knownQueue,
+      },
+      command.action == RemoteAction.radio ||
+              command.action == RemoteAction.playStation
+          ? radioTimeout
+          : commandTimeout,
+    );
     final error = reply['error'];
     final added = reply['added'];
     return RemoteCommandReply(

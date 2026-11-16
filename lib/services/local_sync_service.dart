@@ -1100,7 +1100,8 @@ class LocalSyncService {
   Future<_Reply> _handleRemote(HttpRequest request) async {
     final Map<String, dynamic> envelope;
     try {
-      envelope = await _readJson(request, maxBytes: _smallMessageBytes);
+      // A playlist sent to play there takes more than the other requests.
+      envelope = await _readJson(request, maxBytes: remoteMaxRequestBytes);
     } on _HttpFailure catch (e) {
       return (e.status, {'error': e.code});
     } catch (_) {

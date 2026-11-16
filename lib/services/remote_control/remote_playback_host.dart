@@ -91,6 +91,71 @@ class AudioHandlerRemoteTarget implements RemotePlaybackTarget {
 
   @override
   Future<int> startRadio() => handler.startRadio();
+
+  // What a remote starts plays on this device's own player, even if this
+  // device happens to control yet another one.
+
+  @override
+  String entryIdOf(Map song) => handler.ensureBrowserQueueEntryId(song);
+
+  @override
+  Future<void> playList(List<Map> songs, {int? startIndex, bool? shuffle}) =>
+      handler.addPlaylistToQueueHere(
+        songs,
+        replace: true,
+        startIndex: startIndex,
+        shuffle: shuffle,
+      );
+
+  @override
+  Future<void> enqueue(
+    List<Map> songs, {
+    bool next = false,
+    int? startIndex,
+  }) async {
+    if (next) {
+      // Each goes right after the current song: the last first keeps them in
+      // the order they were picked.
+      for (final song in songs.reversed) {
+        await handler.addToQueueHere(song, playNext: true);
+      }
+    } else if (songs.length == 1 && startIndex == null) {
+      await handler.addToQueueHere(songs.single);
+    } else {
+      await handler.addPlaylistToQueueHere(songs, startIndex: startIndex);
+    }
+  }
+
+  @override
+  Future<void> playSong(Map song) => handler.playSongHere(song);
+
+  @override
+  Future<bool> playStation({
+    required String id,
+    required String name,
+    required String streamUrl,
+    required String image,
+    String? genre,
+  }) => handler.playRadioStreamHere(
+    id: id,
+    name: name,
+    streamUrl: streamUrl,
+    image: image,
+    genre: genre,
+  );
+
+  @override
+  Future<void> removeFromQueue(int index) => handler.removeFromQueue(index);
+
+  @override
+  Future<void> moveEntry(String entryId, int toIndex) =>
+      handler.reorderQueueById(entryId, toIndex);
+
+  @override
+  Future<void> clearQueue() async => handler.clearQueue();
+
+  @override
+  Future<void> shuffleQueue() => handler.shuffleQueue();
 }
 
 /// Lets paired devices control [handler]: on Android the local sync server
