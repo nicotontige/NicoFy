@@ -62,7 +62,7 @@ class NowPlayingControls extends StatelessWidget {
 
     final titleFontSize = getResponsiveTitleFontSize(size);
     final artistFontSize = getResponsiveArtistFontSize(size);
-    final canOpenArtist = _canOpenArtist(metadata);
+    final canOpenArtist = canOpenNowPlayingArtist(metadata);
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -110,7 +110,7 @@ class NowPlayingControls extends StatelessWidget {
                     GestureDetector(
                       behavior: HitTestBehavior.opaque,
                       onTap: canOpenArtist
-                          ? () => _openArtistPage(context, metadata)
+                          ? () => openNowPlayingArtist(context, metadata)
                           : null,
                       onLongPress: () => _copyNowPlayingSong(context, metadata),
                       child: MarqueeTextWidget(
@@ -145,50 +145,52 @@ class NowPlayingControls extends StatelessWidget {
       },
     );
   }
+}
 
-  bool _canOpenArtist(MediaItem metadata) {
-    final info = _extractArtistInfo(metadata);
-    return !offlineMode.value &&
-        (info.artist.isNotEmpty ||
-            info.artistId.isNotEmpty ||
-            info.sourceSongId.isNotEmpty);
-  }
+/// Whether the artist of [metadata] can be opened from the player.
+bool canOpenNowPlayingArtist(MediaItem metadata) {
+  final info = _extractArtistInfo(metadata);
+  return !offlineMode.value &&
+      (info.artist.isNotEmpty ||
+          info.artistId.isNotEmpty ||
+          info.sourceSongId.isNotEmpty);
+}
 
-  void _openArtistPage(BuildContext context, MediaItem metadata) {
-    final info = _extractArtistInfo(metadata);
-    final lookup = info.artistId.isNotEmpty
-        ? info.artistId
-        : info.artist.isNotEmpty
-        ? info.artist
-        : info.sourceSongId;
+/// Closes the player and opens the page of the artist of [metadata].
+void openNowPlayingArtist(BuildContext context, MediaItem metadata) {
+  final info = _extractArtistInfo(metadata);
+  final lookup = info.artistId.isNotEmpty
+      ? info.artistId
+      : info.artist.isNotEmpty
+      ? info.artist
+      : info.sourceSongId;
 
-    if (lookup.isEmpty) return;
+  if (lookup.isEmpty) return;
 
-    final router = GoRouter.of(context);
-    final artistPath = NavigationManager.artistPath(context, lookup);
-    final artistData = {
-      'ytid': info.artistId.isNotEmpty ? info.artistId : lookup,
-      if (info.artist.isNotEmpty) 'title': info.artist,
-      if (info.sourceSongId.isNotEmpty) 'sourceSongId': info.sourceSongId,
-      if (info.videoAuthor.isNotEmpty) 'videoAuthor': info.videoAuthor,
-      'source': 'youtube-artist',
-      'isArtist': true,
-      'list': [],
-    };
+  final router = GoRouter.of(context);
+  final artistPath = NavigationManager.artistPath(context, lookup);
+  final artistData = {
+    'ytid': info.artistId.isNotEmpty ? info.artistId : lookup,
+    if (info.artist.isNotEmpty) 'title': info.artist,
+    if (info.sourceSongId.isNotEmpty) 'sourceSongId': info.sourceSongId,
+    if (info.videoAuthor.isNotEmpty) 'videoAuthor': info.videoAuthor,
+    'source': 'youtube-artist',
+    'isArtist': true,
+    'list': [],
+  };
 
-    Navigator.of(context).pop();
-    unawaited(router.push(artistPath, extra: artistData));
-  }
+  Navigator.of(context).pop();
+  unawaited(router.push(artistPath, extra: artistData));
+}
 
-  ({String artist, String artistId, String sourceSongId, String videoAuthor})
-  _extractArtistInfo(MediaItem metadata) {
-    return (
-      artist: metadata.artist?.trim() ?? '',
-      artistId: metadata.extras?['artistId']?.toString().trim() ?? '',
-      sourceSongId: metadata.extras?['ytid']?.toString().trim() ?? '',
-      videoAuthor: metadata.extras?['videoAuthor']?.toString().trim() ?? '',
-    );
-  }
+({String artist, String artistId, String sourceSongId, String videoAuthor})
+_extractArtistInfo(MediaItem metadata) {
+  return (
+    artist: metadata.artist?.trim() ?? '',
+    artistId: metadata.extras?['artistId']?.toString().trim() ?? '',
+    sourceSongId: metadata.extras?['ytid']?.toString().trim() ?? '',
+    videoAuthor: metadata.extras?['videoAuthor']?.toString().trim() ?? '',
+  );
 }
 
 Future<void> _copyNowPlayingSong(
@@ -208,10 +210,14 @@ class PlayerControlButtons extends StatelessWidget {
     required this.metadata,
     required this.iconSize,
     required this.miniIconSize,
+    this.playFocusNode,
   });
   final MediaItem metadata;
   final double iconSize;
   final double miniIconSize;
+
+  /// The play/pause button's focus, held by the TV now-playing screen.
+  final FocusNode? playFocusNode;
 
   @override
   Widget build(BuildContext context) {
@@ -295,6 +301,7 @@ class PlayerControlButtons extends StatelessWidget {
               Expanded(
                 child: Center(
                   child: _PlaybackControlsRow(
+                    playFocusNode: playFocusNode,
                     colorScheme: colorScheme,
                     buttonConstraints: buttonConstraints,
                     buttonPadding: buttonPadding,
@@ -426,6 +433,7 @@ class PlayerControlButtons extends StatelessWidget {
 
 class _PlaybackControlsRow extends StatelessWidget {
   const _PlaybackControlsRow({
+    required this.playFocusNode,
     required this.colorScheme,
     required this.buttonConstraints,
     required this.buttonPadding,
@@ -442,6 +450,7 @@ class _PlaybackControlsRow extends StatelessWidget {
   final double buttonSpacing;
   final double minButtonSize;
   final EdgeInsets playPadding;
+  final FocusNode? playFocusNode;
 
   @override
   Widget build(BuildContext context) {
@@ -471,6 +480,7 @@ class _PlaybackControlsRow extends StatelessWidget {
                   ),
                   SizedBox(width: buttonSpacing),
                   PlaybackIconButton(
+                    focusNode: playFocusNode,
                     iconColor: colorScheme.onPrimary,
                     backgroundColor: colorScheme.primary,
                     iconSize: controlIconSize,

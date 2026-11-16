@@ -33,6 +33,7 @@ Widget buildPlaybackIconButton(
   Color iconColor,
   Color backgroundColor, {
   EdgeInsets? padding,
+  FocusNode? focusNode,
 }) {
   return StreamBuilder<PlaybackState>(
     stream: audioHandler.playbackState.distinct((previous, current) {
@@ -59,7 +60,9 @@ Widget buildPlaybackIconButton(
             valueColor: AlwaysStoppedAnimation<Color>(iconColor),
           ),
         );
-        onPressed = null;
+        // A disabled button drops focus, and the remote would lose its place
+        // on every change of song: one that keeps focus does nothing instead.
+        onPressed = focusNode == null ? null : () {};
         semanticLabel = context.l10n!.loading;
       } else if (processingState == AudioProcessingState.completed) {
         iconWidget = Icon(
@@ -84,6 +87,7 @@ Widget buildPlaybackIconButton(
       return RemoteFocusFrame(
         circle: true,
         child: RawMaterialButton(
+          focusNode: focusNode,
           elevation: 0,
           onPressed: onPressed,
           fillColor: backgroundColor,
@@ -113,12 +117,17 @@ class PlaybackIconButton extends StatelessWidget {
     required this.iconColor,
     required this.backgroundColor,
     this.padding,
+    this.focusNode,
   });
 
   final double iconSize;
   final Color iconColor;
   final Color backgroundColor;
   final EdgeInsets? padding;
+
+  /// Kept by the TV now-playing screen, where the remote rests on this
+  /// button; the button then stays focusable while a song loads.
+  final FocusNode? focusNode;
 
   @override
   Widget build(BuildContext context) {
@@ -127,6 +136,7 @@ class PlaybackIconButton extends StatelessWidget {
       iconColor,
       backgroundColor,
       padding: padding,
+      focusNode: focusNode,
     );
   }
 }

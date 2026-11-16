@@ -26,15 +26,53 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:nicofy/main.dart';
 import 'package:nicofy/screens/remote_player_page.dart';
+import 'package:nicofy/utilities/device_identity.dart';
+import 'package:nicofy/utilities/flutter_bottom_sheet.dart'
+    show isBottomSheetOpen;
 import 'package:nicofy/widgets/flip_card.dart';
 import 'package:nicofy/widgets/now_playing/bottom_actions_row.dart';
 import 'package:nicofy/widgets/now_playing/now_playing_artwork.dart';
 import 'package:nicofy/widgets/now_playing/now_playing_controls.dart';
+import 'package:nicofy/widgets/now_playing/tv_now_playing_layout.dart';
+import 'package:nicofy/widgets/now_playing/tv_remote.dart';
 import 'package:nicofy/widgets/queue_list_view.dart';
 import 'package:nicofy/widgets/remote_control/remote_device_picker.dart';
 
+/// Opens the now-playing screen over everything, sliding up from the bottom.
+/// With [ambient], in its calm TV form, as the idle timer opens it.
+void openNowPlaying(BuildContext context, {bool ambient = false}) {
+  Navigator.of(context).push(
+    PageRouteBuilder<void>(
+      pageBuilder: (context, animation, _) => NowPlayingPage(ambient: ambient),
+      reverseTransitionDuration: const Duration(milliseconds: 250),
+      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+        final tween = Tween(
+          begin: const Offset(0, 1),
+          end: Offset.zero,
+        ).chain(CurveTween(curve: Curves.easeInOut));
+        return SlideTransition(position: animation.drive(tween), child: child);
+      },
+    ),
+  );
+}
+
 class NowPlayingPage extends StatefulWidget {
-  const NowPlayingPage({super.key});
+  const NowPlayingPage({super.key, this.ambient = false});
+
+  /// Opened by the TV idle timer: big artwork and lyrics, no controls until
+  /// a key is pressed.
+  final bool ambient;
+
+  /// The screen open at the moment, if any.
+  static _NowPlayingPageState? _open;
+
+  /// Whether a now-playing screen is open, covered or not. The idle timer
+  /// then leaves it to that screen rather than opening a second one.
+  static bool get isOpen => _open?.mounted ?? false;
+
+  /// Turns the open screen ambient, if it is the one on show: not under a
+  /// dialog or with a sheet open.
+  static void showAmbientIfOnTop() => _open?._enterAmbientIfOnTop();
 
   @override
   State<NowPlayingPage> createState() => _NowPlayingPageState();
@@ -43,8 +81,44 @@ class NowPlayingPage extends StatefulWidget {
 class _NowPlayingPageState extends State<NowPlayingPage> {
   final _lyricsController = FlipCardController();
 
+  /// Where the remote rests on a TV.
+  final _playFocusNode = FocusNode(debugLabel: 'Play/pause');
+
+  late bool _ambient = widget.ambient;
+
+  @override
+  void initState() {
+    super.initState();
+    NowPlayingPage._open = this;
+  }
+
+  @override
+  void dispose() {
+    if (NowPlayingPage._open == this) NowPlayingPage._open = null;
+    _playFocusNode.dispose();
+    super.dispose();
+  }
+
+  void _enterAmbientIfOnTop() {
+    if (!mounted || _ambient || isBottomSheetOpen.value) return;
+    if (!(ModalRoute.of(context)?.isCurrent ?? false)) return;
+    setState(() => _ambient = true);
+  }
+
+  /// The first key after the ambient screen only brings the controls back,
+  /// with the remote on play/pause.
+  void _wake() {
+    setState(() => _ambient = false);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _playFocusNode.canRequestFocus) {
+        _playFocusNode.requestFocus();
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (isTelevision) return _buildTv(context);
     final size = MediaQuery.sizeOf(context);
     final isLargeScreen = size.width > 800 && size.height > 600;
     final theme = Theme.of(context);
@@ -91,6 +165,46 @@ class _NowPlayingPageState extends State<NowPlayingPage> {
               ],
             );
           },
+        ),
+      ),
+    );
+  }
+
+  /// On a TV, the screen the remote is made for, see [TvNowPlayingLayout].
+  Widget _buildTv(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return RemoteWakeGuard(
+      active: _ambient,
+      onWake: _wake,
+      child: TvPlayFocusKeeper(
+        playFocusNode: _playFocusNode,
+        isCovered: () => isBottomSheetOpen.value || _ambient,
+        child: Scaffold(
+          backgroundColor: colorScheme.surface,
+          body: SafeArea(
+            child: StreamBuilder<MediaItem?>(
+              stream: audioHandler.mediaItem,
+              builder: (context, snapshot) {
+                final metadata = snapshot.data;
+                if (metadata == null) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                return Column(
+                  children: [
+                    if (!_ambient) _buildAppBar(context, colorScheme),
+                    Expanded(
+                      child: TvNowPlayingLayout(
+                        metadata: metadata,
+                        lyricsController: _lyricsController,
+                        playFocusNode: _playFocusNode,
+                        ambient: _ambient,
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
         ),
       ),
     );

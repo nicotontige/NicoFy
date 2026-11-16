@@ -41,10 +41,15 @@ class NowPlayingArtwork extends StatelessWidget {
     required this.size,
     required this.metadata,
     required this.lyricsController,
+    this.imageSize,
   });
   final Size size;
   final MediaItem metadata;
   final FlipCardController lyricsController;
+
+  /// Overrides the size worked out from [size], for the TV screen, which is
+  /// wide enough to count as a desktop but watched from much further away.
+  final double? imageSize;
 
   @override
   Widget build(BuildContext context) {
@@ -53,15 +58,17 @@ class NowPlayingArtwork extends StatelessWidget {
     final screenHeight = size.height;
     final isLandscape = screenWidth > screenHeight;
     final isDesktop = screenWidth > 800;
-    final imageSize = isDesktop
-        ? screenHeight * 0.38
-        : isLandscape
-        ? screenHeight * 0.45
-        : screenWidth < 360
-        ? screenWidth * 0.75
-        : screenWidth < 600
-        ? screenWidth * 0.80
-        : screenWidth * 0.65;
+    final imageSize =
+        this.imageSize ??
+        (isDesktop
+            ? screenHeight * 0.38
+            : isLandscape
+            ? screenHeight * 0.45
+            : screenWidth < 360
+            ? screenWidth * 0.75
+            : screenWidth < 600
+            ? screenWidth * 0.80
+            : screenWidth * 0.65);
 
     const borderRadius = 24.0;
 
