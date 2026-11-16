@@ -496,8 +496,38 @@ class NicoFyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
     return mapToMediaItem(song).copyWith(id: _queueEntryIds.ensureId(song));
   }
 
-  List<MediaItem> _buildQueueMediaItems() =>
-      _queueList.map(_getMediaItemForQueue).toList(growable: false);
+  /// Where the queue shown outside the app starts: at the song playing. The
+  /// songs before it stay in [_queueList], so previous still reaches them and
+  /// brings each back to the top as it plays again, but a car (and the system
+  /// media controls) only list what is playing and what comes next.
+  int get _visibleQueueStart => _hasCurrentQueueIndex ? _currentQueueIndex : 0;
+
+  /// The start of the queue last published on [queue], which is what the
+  /// indexes a car sends back refer to.
+  int _publishedQueueStart = 0;
+
+  List<MediaItem> _buildQueueMediaItems() => _queueList
+      .skip(_visibleQueueStart)
+      .map(_getMediaItemForQueue)
+      .toList(growable: false);
+
+  void _publishVisibleQueue() {
+    final start = _visibleQueueStart;
+    queue.add(_buildQueueMediaItems());
+    _publishedQueueStart = start;
+  }
+
+  /// The current song's index within the published queue, republishing it
+  /// first when playback moved to another song since: the two have to agree,
+  /// or the car highlights and plays the wrong rows.
+  int? _visibleQueueIndex() {
+    if (!_hasCurrentQueueIndex) return null;
+    if (_publishedQueueStart != _visibleQueueStart) _publishVisibleQueue();
+    return _currentQueueIndex - _publishedQueueStart;
+  }
+
+  /// A queue index sent by the car, as an index into [_queueList].
+  int _queueIndexFromVisible(int index) => index + _publishedQueueStart;
 
   bool _playerSourceMatchesCurrentSong() {
     if (!_hasCurrentQueueIndex) return false;
@@ -561,10 +591,11 @@ class NicoFyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
         currentSongYtid,
       );
 
+      final visibleIndex = _visibleQueueIndex() ?? 0;
       final existingQueue = queue.valueOrNull;
       final queueItem =
-          existingQueue != null && queueIndex < existingQueue.length
-          ? existingQueue[queueIndex]
+          existingQueue != null && visibleIndex < existingQueue.length
+          ? existingQueue[visibleIndex]
           : null;
       final storedDuration = readMediaDuration(currentSong['duration']);
       var stableDuration = storedDuration;
@@ -623,7 +654,7 @@ class NicoFyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
       if (existingQueue != null && queueItem != null) {
         if (!durationEquals(queueItem.duration, stableDuration)) {
           final updatedQueue = List<MediaItem>.from(existingQueue);
-          updatedQueue[queueIndex] = queueItem.copyWith(
+          updatedQueue[visibleIndex] = queueItem.copyWith(
             duration: stableDuration,
           );
           queue.add(updatedQueue);
@@ -631,12 +662,14 @@ class NicoFyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
         }
       } else {
         final rebuiltQueue = _buildQueueMediaItems();
-        if (queueIndex < rebuiltQueue.length) {
-          rebuiltQueue[queueIndex] = rebuiltQueue[queueIndex].copyWith(
+        final rebuiltIndex = queueIndex - _visibleQueueStart;
+        if (rebuiltIndex >= 0 && rebuiltIndex < rebuiltQueue.length) {
+          rebuiltQueue[rebuiltIndex] = rebuiltQueue[rebuiltIndex].copyWith(
             duration: stableDuration,
           );
         }
         queue.add(rebuiltQueue);
+        _publishedQueueStart = _visibleQueueStart;
         publishedQueueChanged = true;
       }
 
@@ -901,11 +934,13 @@ class NicoFyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
           (bufferedPosition - currentState.bufferedPosition).abs() >=
               const Duration(seconds: 1);
 
+      final visibleQueueIndex = _visibleQueueIndex();
+
       final shouldUpdate =
           currentState == null ||
           currentState.playing != isPlaying ||
           currentState.processingState != newProcessingState ||
-          currentState.queueIndex != _currentQueueIndex ||
+          currentState.queueIndex != visibleQueueIndex ||
           currentState.speed != audioPlayer.speed ||
           shouldEmitProgressTick ||
           hasBufferedPositionChange ||
@@ -932,11 +967,7 @@ class NicoFyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
             updatePosition: currentPosition,
             bufferedPosition: bufferedPosition,
             speed: audioPlayer.speed,
-            queueIndex:
-                _currentQueueIndex >= 0 &&
-                    _currentQueueIndex < _queueList.length
-                ? _currentQueueIndex
-                : null,
+            queueIndex: visibleQueueIndex,
             updateTime: now,
           ),
         );
@@ -1537,14 +1568,12 @@ class NicoFyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
     try {
       _queueEntryIds.ensureIds(_queueList);
 
-      final mediaItems = _buildQueueMediaItems();
-      queue.add(mediaItems);
+      _publishVisibleQueue();
 
       _queueMapStream.add(List.unmodifiable(_queueList));
 
-      if (_currentQueueIndex >= 0 && _currentQueueIndex < mediaItems.length) {
-        final currentMediaItem = mediaItems[_currentQueueIndex];
-        mediaItem.add(currentMediaItem);
+      if (_hasCurrentQueueIndex) {
+        mediaItem.add(_getMediaItemForQueue(_queueList[_currentQueueIndex]));
       }
 
       _persistQueue();
@@ -1559,7 +1588,6 @@ class NicoFyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
 
   void _emitOptimisticLoadingState({
     Map? song,
-    int? queueIndex,
     bool includeMediaItem = false,
     String? mediaId,
   }) {
@@ -1593,8 +1621,7 @@ class NicoFyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
           androidCompactActionIndices: const [0, 1, 3],
           processingState: AudioProcessingState.loading,
           speed: audioPlayer.speed,
-          queueIndex:
-              queueIndex ?? (_hasCurrentQueueIndex ? _currentQueueIndex : null),
+          queueIndex: _visibleQueueIndex(),
           updateTime: DateTime.now(),
         ),
       );
@@ -1657,10 +1684,7 @@ class NicoFyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
         mediaItem.add(currentMediaItem);
       });
 
-      _emitOptimisticLoadingState(
-        queueIndex: _currentQueueIndex,
-        mediaId: uniqueId,
-      );
+      _emitOptimisticLoadingState(mediaId: uniqueId);
 
       final success = await playSong(
         _queueList[index],
@@ -1890,6 +1914,12 @@ class NicoFyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
 
   @override
   List<Map> get browserQueue => _queueList;
+
+  /// The same start as the queue published to the session, so the index a
+  /// row of the browsed queue is played with maps back the same way.
+  @override
+  int get browserQueueStart =>
+      _publishedQueueStart.clamp(0, _queueList.length);
 
   @override
   Stream<List<MediaItem>> get browserQueueStream => queue;
@@ -2966,10 +2996,13 @@ class NicoFyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
     }
   }
 
+  /// [index] is a row of the queue published to the system, which starts at
+  /// the song playing; the app's own queue view calls [skipToSong] instead.
   @override
   Future<void> skipToQueueItem(int index) async {
     await _startup;
-    await skipToSong(index);
+    if (index < 0) return;
+    await skipToSong(_queueIndexFromVisible(index));
   }
 
   @override

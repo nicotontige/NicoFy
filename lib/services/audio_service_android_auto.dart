@@ -10,6 +10,11 @@ import 'package:rxdart/rxdart.dart';
 
 abstract interface class AndroidAutoHost {
   List<Map> get browserQueue;
+
+  /// Where the queue shown in the car starts within [browserQueue]: at the
+  /// song playing, the ones already played being left out. An index passed
+  /// to [skipToQueueItem] counts from there.
+  int get browserQueueStart;
   Stream<List<MediaItem>> get browserQueueStream;
 
   /// Emits when the song being played changes. It moves the marks on the
@@ -252,11 +257,15 @@ class AndroidAutoBrowser {
         : item.copyWith(extras: {...?item.extras, ...completion});
   }
 
-  List<MediaItem> _browsableSongs(Iterable songs, String containerId) {
+  List<MediaItem> _browsableSongs(
+    Iterable songs,
+    String containerId, {
+    int firstIndex = 0,
+  }) {
     final items = <MediaItem>[];
     // Counted over the source list, not the built one: a song that yields no
     // item still occupies its place in the queue the marks refer to.
-    var index = 0;
+    var index = firstIndex;
     for (final song in songs.whereType<Map>()) {
       final item = _browsableSong(song, containerId, index++);
       if (item != null) items.add(item);
@@ -345,7 +354,9 @@ class AndroidAutoBrowser {
   Future<List<Map>> _songsForContainer(String containerId) async {
     switch (containerId) {
       case _rootQueue:
-        return List<Map>.from(_host.browserQueue);
+        // Only what is playing and what follows: the songs already played
+        // stay in the queue for previous, but listing them is clutter.
+        return _host.browserQueue.skip(_host.browserQueueStart).toList();
       case _rootLiked:
         return userLikedSongsList.value.whereType<Map>().toList();
       case _rootOffline:
@@ -410,7 +421,13 @@ class AndroidAutoBrowser {
       return [
         if (songs.length > 1 && _canShuffle(parentMediaId))
           _shuffleItem(parentMediaId),
-        ..._browsableSongs(songs, parentMediaId),
+        ..._browsableSongs(
+          songs,
+          parentMediaId,
+          firstIndex: parentMediaId == _rootQueue
+              ? _host.browserQueueStart
+              : 0,
+        ),
       ];
     }
 

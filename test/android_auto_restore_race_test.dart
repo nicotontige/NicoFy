@@ -59,7 +59,12 @@ void main() {
     await directory.delete(recursive: true);
   });
 
-  List<String?> queuedIds() => handler!.queue.value
+  /// The whole queue, played songs included.
+  List<String?> queuedIds() =>
+      handler!.browserQueue.map((song) => song['ytid'] as String?).toList();
+
+  /// The queue the car is shown: from the song playing on.
+  List<String?> shownIds() => handler!.queue.value
       .map((item) => item.extras?['ytid'] as String?)
       .toList();
 
@@ -81,6 +86,7 @@ void main() {
     handler = NicoFyAudioHandler();
     await handler!.prepareFromMediaId('recent:b');
 
+    expect(shownIds(), ['b', 'c', 'd']);
     expect(queuedIds(), ['a', 'b', 'c', 'd']);
   });
 
