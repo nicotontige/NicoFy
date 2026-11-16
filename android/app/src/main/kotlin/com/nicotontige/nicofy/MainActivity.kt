@@ -1,7 +1,10 @@
 package com.nicotontige.nicofy
 
+import android.app.UiModeManager
 import android.content.ActivityNotFoundException
+import android.content.Context
 import android.content.Intent
+import android.content.res.Configuration
 import android.os.Build
 import android.os.Bundle
 import androidx.core.content.FileProvider
@@ -43,6 +46,21 @@ class MainActivity : AudioServiceActivity() {
           else -> result.notImplemented()
         }
       }
+    // How this device names itself to the other NicoFy devices on the network.
+    MethodChannel(flutterEngine.dartExecutor.binaryMessenger, DEVICE_CHANNEL)
+      .setMethodCallHandler { call, result ->
+        when (call.method) {
+          "identity" -> result.success(
+            mapOf("model" to Build.MODEL, "television" to isTelevision())
+          )
+          else -> result.notImplemented()
+        }
+      }
+  }
+
+  private fun isTelevision(): Boolean {
+    val uiMode = getSystemService(Context.UI_MODE_SERVICE) as? UiModeManager
+    return uiMode?.currentModeType == Configuration.UI_MODE_TYPE_TELEVISION
   }
 
   // The system installer asks for the "install unknown apps" permission
@@ -63,5 +81,6 @@ class MainActivity : AudioServiceActivity() {
 
   companion object {
     private const val UPDATE_CHANNEL = "nicofy/update"
+    private const val DEVICE_CHANNEL = "nicofy/device"
   }
 }

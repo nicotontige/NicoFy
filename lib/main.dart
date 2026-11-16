@@ -51,6 +51,7 @@ import 'package:nicofy/services/stream_buffer_service.dart';
 import 'package:nicofy/services/update_manager.dart';
 import 'package:nicofy/services/windows_media_controls.dart';
 import 'package:nicofy/theme/app_themes.dart';
+import 'package:nicofy/utilities/device_identity.dart';
 import 'package:nicofy/utilities/flutter_toast.dart';
 import 'package:nicofy/utilities/language_utils.dart';
 import 'package:nicofy/utilities/platform_utils.dart';
@@ -324,6 +325,9 @@ Future<void> initialisation() async {
 
     // Nothing else removes cache entries nobody asks for again.
     unawaited(cleanupOldCacheEntries());
+
+    // Before local sync, which names this device after it.
+    await loadDeviceIdentity();
 
     try {
       await LocalSyncService.instance.initialise();

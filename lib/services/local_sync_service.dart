@@ -39,6 +39,7 @@ import 'package:nicofy/services/local_sync/sync_data.dart';
 import 'package:nicofy/services/local_sync/sync_pairing.dart';
 import 'package:nicofy/services/local_sync/sync_security.dart';
 import 'package:nicofy/services/settings_manager.dart';
+import 'package:nicofy/utilities/device_identity.dart';
 import 'package:nicofy/utilities/platform_utils.dart';
 
 /// Another NicoFy instance that answered a discovery broadcast.
@@ -297,7 +298,7 @@ class LocalSyncService {
   int? get serverPort => _httpServer?.port;
 
   String get deviceName => isAndroidPlatform
-      ? 'NicoFy (Android)'
+      ? 'NicoFy (${deviceModel ?? 'Android'})'
       : 'NicoFy (${Platform.localHostname})';
 
   Future<void> initialise() async {

@@ -61,9 +61,11 @@ const _categoryIcons = <SyncCategory, IconData>{
   SyncCategory.radio: FluentIcons.live_24_regular,
 };
 
+// Android devices now name themselves after their model ("NicoFy (Pixel 8)"),
+// which says nothing of their kind.
 IconData _deviceIcon(String name) => name.toLowerCase().contains('android')
     ? FluentIcons.phone_24_regular
-    : FluentIcons.desktop_24_regular;
+    : FluentIcons.phone_desktop_24_regular;
 
 Future<void> _setLocalSync(BuildContext context, bool enabled) async {
   final service = LocalSyncService.instance;
