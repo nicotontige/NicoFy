@@ -1,5 +1,6 @@
 package com.nicotontige.nicofy
 
+import android.app.SearchManager
 import android.app.UiModeManager
 import android.content.ActivityNotFoundException
 import android.content.Context
@@ -7,6 +8,7 @@ import android.content.Intent
 import android.content.res.Configuration
 import android.os.Build
 import android.os.Bundle
+import android.provider.MediaStore
 import androidx.core.content.FileProvider
 import androidx.core.view.WindowCompat
 import com.ryanheise.audioservice.AudioServiceActivity
@@ -15,8 +17,14 @@ import io.flutter.plugin.common.MethodChannel
 import java.io.File
 
 // AudioServiceActivity keeps the engine the audio service shares; it only
-// gains the channel that hands a downloaded update to the system installer.
+// gains the channels that hand a downloaded update to the system installer,
+// name the device, and pass on voice searches.
 class MainActivity : AudioServiceActivity() {
+  private var voiceChannel: MethodChannel? = null
+
+  // A voice search that arrived before Dart listened, at a cold start.
+  private var pendingVoiceQuery: String? = null
+
   override fun onCreate(savedInstanceState: Bundle?) {
     // Aligns the Flutter view vertically with the window.
     WindowCompat.setDecorFitsSystemWindows(getWindow(), false)
@@ -28,6 +36,37 @@ class MainActivity : AudioServiceActivity() {
     }
 
     super.onCreate(savedInstanceState)
+    handleVoiceSearch(intent)
+  }
+
+  override fun onNewIntent(intent: Intent) {
+    super.onNewIntent(intent)
+    handleVoiceSearch(intent)
+  }
+
+  // MEDIA_PLAY_FROM_SEARCH carries what was asked for in SearchManager.QUERY,
+  // empty for "play some music". Dart plays it like the media session's
+  // playFromSearch, or picks it up at startup if it is not listening yet.
+  private fun handleVoiceSearch(intent: Intent?) {
+    if (intent?.action != MediaStore.INTENT_ACTION_MEDIA_PLAY_FROM_SEARCH) return
+    val query = intent.getStringExtra(SearchManager.QUERY) ?: ""
+    // Handled once, not again when the activity is recreated.
+    intent.action = Intent.ACTION_MAIN
+    val channel = voiceChannel
+    if (channel == null) {
+      pendingVoiceQuery = query
+      return
+    }
+    channel.invokeMethod("playFromSearch", query, object : MethodChannel.Result {
+      override fun success(result: Any?) {}
+
+      override fun error(code: String, message: String?, details: Any?) {}
+
+      // Dart is not listening yet: it asks for it once it starts.
+      override fun notImplemented() {
+        pendingVoiceQuery = query
+      }
+    })
   }
 
   override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -44,6 +83,18 @@ class MainActivity : AudioServiceActivity() {
             }
           }
           else -> result.notImplemented()
+        }
+      }
+    voiceChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, VOICE_CHANNEL)
+      .also { channel ->
+        channel.setMethodCallHandler { call, result ->
+          when (call.method) {
+            "takePendingQuery" -> {
+              result.success(pendingVoiceQuery)
+              pendingVoiceQuery = null
+            }
+            else -> result.notImplemented()
+          }
         }
       }
     // How this device names itself to the other NicoFy devices on the network.
@@ -82,5 +133,6 @@ class MainActivity : AudioServiceActivity() {
   companion object {
     private const val UPDATE_CHANNEL = "nicofy/update"
     private const val DEVICE_CHANNEL = "nicofy/device"
+    private const val VOICE_CHANNEL = "nicofy/voice"
   }
 }

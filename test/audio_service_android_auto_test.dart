@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_ce/hive_ce.dart';
 import 'package:nicofy/services/audio_service_android_auto.dart';
 import 'package:nicofy/services/common_services.dart';
+import 'package:nicofy/services/settings_manager.dart';
 
 void main() {
   late Directory temporaryDirectory;
@@ -205,6 +206,56 @@ void main() {
       expect(host.shuffledSongs?.map((song) => song['ytid']), ['a', 'b']);
     });
   });
+
+  // "Ok Google, mets <artiste> sur NicoFy", on a phone, in a car or on a TV:
+  // the assistant hands the words over through the media session.
+  group('playing what was asked by voice', () {
+    late bool wasOffline;
+
+    setUp(() {
+      // Only the library: the YouTube search is the network.
+      wasOffline = offlineMode.value;
+      offlineMode.value = true;
+      userLikedSongsList.value = [
+        {..._song(ytid: 'a', title: 'Get Lucky'), 'artist': 'Daft Punk'},
+        {..._song(ytid: 'b', title: 'Clocks'), 'artist': 'Coldplay'},
+        {..._song(ytid: 'c', title: 'One More Time'), 'artist': 'Daft Punk'},
+      ];
+    });
+    tearDown(() {
+      userLikedSongsList.value = [];
+      offlineMode.value = wasOffline;
+    });
+
+    test('an artist plays their songs, the first one first', () async {
+      await browser.playFromSearch('daft punk');
+
+      expect(host.playedSongs?.map((song) => song['ytid']), ['a', 'c']);
+      expect(host.playedIndex, 0);
+    });
+
+    test('a title plays that song', () async {
+      await browser.playFromSearch('Clocks');
+
+      expect(host.playedSongs?.map((song) => song['ytid']), ['b']);
+    });
+
+    test('nothing named just resumes what was playing', () async {
+      host.queue.add(_song());
+
+      await browser.playFromSearch('');
+
+      expect(host.resumed, 1);
+      expect(host.playedSongs, isNull);
+    });
+
+    test('no match leaves playback alone', () async {
+      await browser.playFromSearch('nothing like it');
+
+      expect(host.playedSongs, isNull);
+      expect(host.resumed, 0);
+    });
+  });
 }
 
 Map<String, dynamic> _song({String ytid = 'video-1', String title = 'Song'}) =>
@@ -280,17 +331,25 @@ class _FakeAndroidAutoHost implements AndroidAutoHost {
     StackTrace? stackTrace,
   }) {}
 
+  int resumed = 0;
+
   @override
-  Future<void> resumeAudio() async {}
+  Future<void> resumeAudio() async => resumed++;
 
   @override
   Future<void> skipToQueueItem(int index) async => skippedTo.add(index);
+
+  List<Map>? playedSongs;
+  int? playedIndex;
 
   @override
   Future<void> playBrowserPlaylist(
     List<Map> songs, {
     required int songIndex,
-  }) async {}
+  }) async {
+    playedSongs = songs;
+    playedIndex = songIndex;
+  }
 
   List<Map>? shuffledSongs;
 

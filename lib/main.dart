@@ -51,6 +51,7 @@ import 'package:nicofy/services/router_service.dart';
 import 'package:nicofy/services/settings_manager.dart';
 import 'package:nicofy/services/stream_buffer_service.dart';
 import 'package:nicofy/services/update_manager.dart';
+import 'package:nicofy/services/voice_search_intent.dart';
 import 'package:nicofy/services/windows_media_controls.dart';
 import 'package:nicofy/theme/app_themes.dart';
 import 'package:nicofy/theme/remote_focus_theme.dart';
@@ -392,6 +393,9 @@ Future<void> initialisation() async {
     }
 
     startRemoteControlHosting(audioHandler);
+    if (isAndroidPlatform) {
+      unawaited(listenToVoiceSearchIntents(audioHandler.playFromSearch));
+    }
     // While this device controls another, what its screens start plays there.
     audioHandler.playbackRedirect = RemoteControlController.instance
       ..notify = showRemoteNotice;

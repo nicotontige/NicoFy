@@ -97,6 +97,12 @@
                     android:host="playlist"
                     android:pathPattern="/custom/.*" />
             </intent-filter>
+            <!-- "Ok Google, play <artist> on NicoFy": the assistant mostly goes
+                 through the media session, but some systems still send this. -->
+            <intent-filter>
+                <action android:name="android.media.action.MEDIA_PLAY_FROM_SEARCH" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
             <!-- Intent filter for handling text sharing -->
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
