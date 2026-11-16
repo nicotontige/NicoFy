@@ -264,10 +264,9 @@ class NicoFyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
     final hasMultipleTracks = _queueList.length > 1;
 
     return [
-      if (hasMultipleTracks)
-        MediaControl.skipToPrevious
-      else
-        MediaControl.rewind,
+      // Previous restarts a song with nothing behind it, so it is always
+      // there: "Ok Google, précédent" needs the session to offer it.
+      MediaControl.skipToPrevious,
       if (playing) MediaControl.pause else MediaControl.play,
       _radioControl(),
       if (hasMultipleTracks || canFetchRecommendedSong)
