@@ -287,9 +287,15 @@ class _NicoFyState extends State<NicoFy> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     return DynamicColorBuilder(
       builder: (lightColorScheme, darkColorScheme) {
-        final colorScheme = getAppColorScheme(
-          lightColorScheme,
-          darkColorScheme,
+        final selectedScheme = (brightness == Brightness.light)
+            ? lightColorScheme
+            : darkColorScheme;
+
+        final colorScheme = ColorScheme.fromSeed(
+          seedColor: useSystemColor.value && selectedScheme != null
+              ? selectedScheme.primary
+              : primaryColorSetting,
+          brightness: brightness,
         );
 
         return AnnotatedRegion<SystemUiOverlayStyle>(
