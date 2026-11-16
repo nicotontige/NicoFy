@@ -134,6 +134,11 @@ class _SheetFocusState extends State<_SheetFocus> {
   Widget build(BuildContext context) {
     return BackButtonListener(
       onBackButtonPressed: () async {
+        // A menu or a dialog opened from the sheet goes first.
+        if (!(ModalRoute.of(context)?.isCurrent ?? true)) {
+          await Navigator.of(context).maybePop();
+          return true;
+        }
         closeCurrentBottomSheet();
         return true;
       },

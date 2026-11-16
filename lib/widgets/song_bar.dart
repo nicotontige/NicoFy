@@ -292,6 +292,97 @@ Future<void> _toggleSongOfflineStatus(
   }
 }
 
+/// Opens the menu of a song's overflow button from somewhere else: a long
+/// press, or select held on a TV remote. [leadingItems] and [trailingItems]
+/// frame the usual entries; [onSelected] gets the chosen value first and
+/// returns true when it dealt with it, which also lets it take over one of
+/// the usual actions.
+///
+/// [context] runs the chosen action, so it must outlive the menu; [position]
+/// is where the menu opens, usually [menuPositionFor] the item pressed.
+Future<void> showSongOptionsMenu({
+  required BuildContext context,
+  required Map song,
+  required RelativeRect position,
+  List<PopupMenuEntry<String>> leadingItems = const [],
+  List<PopupMenuEntry<String>> trailingItems = const [],
+  bool showQueueActions = true,
+  FutureOr<bool> Function(String value)? onSelected,
+}) async {
+  final ytid = song['ytid']?.toString() ?? '';
+  final artist = song['artist']?.toString().trim() ?? '';
+  final songLikeStatus = ValueNotifier(isSongAlreadyLiked(ytid));
+  final songOfflineStatus = ValueNotifier(isSongAlreadyOffline(ytid));
+  final songDownloadStatus = ValueNotifier(false);
+
+  try {
+    final menu = showMenu<String>(
+      context: context,
+      position: position,
+      items: [
+        ...leadingItems,
+        ..._buildSongMenuItems(
+          context: context,
+          colorScheme: Theme.of(context).colorScheme,
+          songLikeStatus: songLikeStatus,
+          songOfflineStatus: songOfflineStatus,
+          songDownloadStatus: songDownloadStatus,
+          showQueueActions: showQueueActions,
+          showGoToArtist: !offlineMode.value && artist.isNotEmpty,
+        ),
+        ...trailingItems,
+      ],
+    );
+    _focusFirstMenuItem();
+
+    final value = await menu;
+    if (value == null || !context.mounted) return;
+    if (await onSelected?.call(value) ?? false) return;
+    if (!context.mounted) return;
+    await _handleSongMenuAction(
+      context: context,
+      value: value,
+      song: song,
+      ytid: ytid,
+      songLikeStatus: songLikeStatus,
+      songOfflineStatus: songOfflineStatus,
+      songDownloadStatus: songDownloadStatus,
+    );
+  } finally {
+    songLikeStatus.dispose();
+    songOfflineStatus.dispose();
+    songDownloadStatus.dispose();
+  }
+}
+
+/// Where a menu opened for the widget at [context] goes: over it, as a
+/// [PopupMenuButton] would place it.
+RelativeRect menuPositionFor(BuildContext context) {
+  final box = context.findRenderObject()! as RenderBox;
+  final overlay =
+      Navigator.of(context).overlay!.context.findRenderObject()! as RenderBox;
+  return RelativeRect.fromRect(
+    Rect.fromPoints(
+      box.localToGlobal(Offset.zero, ancestor: overlay),
+      box.localToGlobal(box.size.bottomRight(Offset.zero), ancestor: overlay),
+    ),
+    Offset.zero & overlay.size,
+  );
+}
+
+/// A popup menu takes focus as a whole but leaves its items unfocused, so a
+/// TV remote would need a first key press just to land on one. Focus the
+/// first item once the menu is built. A touch user sees no difference: focus
+/// is only drawn in keyboard mode.
+void _focusFirstMenuItem() {
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    final focus = FocusManager.instance.primaryFocus;
+    if (focus is FocusScopeNode) {
+      focus.traversalDescendants.firstOrNull?.requestFocus();
+    }
+  });
+}
+
 class SongBar extends StatefulWidget {
   const SongBar(
     this.song,

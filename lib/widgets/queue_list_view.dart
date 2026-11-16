@@ -30,10 +30,14 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:nicofy/extensions/l10n.dart';
 import 'package:nicofy/main.dart';
+import 'package:nicofy/services/router_service.dart';
 import 'package:nicofy/utilities/flutter_bottom_sheet.dart';
 import 'package:nicofy/utilities/queue_entry_utils.dart';
 import 'package:nicofy/widgets/confirmation_dialog.dart';
 import 'package:nicofy/widgets/no_artwork_cube.dart';
+import 'package:nicofy/widgets/popup_menu_item.dart';
+import 'package:nicofy/widgets/remote_hold_detector.dart';
+import 'package:nicofy/widgets/song_bar.dart';
 
 /// The songs still to come: the one playing, at the top, and those after it.
 ///
@@ -430,6 +434,9 @@ class _QueueWidgetState extends State<QueueWidget> {
   }) {
     final start = _start;
     final pinned = _startsWithCurrentSong;
+    // A remote cannot drag, swipe nor long-press with a finger: big screens
+    // get a button to the song menu, which holding select opens too.
+    final showMoreButton = MediaQuery.sizeOf(context).width >= 600;
 
     return ReorderableListView.builder(
       scrollController: _scrollController,
@@ -459,12 +466,15 @@ class _QueueWidgetState extends State<QueueWidget> {
           autofocus: isCurrentSong && widget.focusCurrentSong,
           focusNode: _focusNodeFor(queueEntryId),
           colorScheme: colorScheme,
+          showMoreButton: showMoreButton,
           onTap: () {
             final actualIndex = _queueIndexOfKey(queueEntryId);
             if (actualIndex == -1) return;
             audioHandler.skipToSong(actualIndex);
             if (closeOnTap) closeCurrentBottomSheet();
           },
+          onShowMenu: (tileContext) =>
+              _showSongMenu(tileContext, song, queueEntryId),
           confirmDismiss: (_) async {
             _isDismissing = true;
             return true;
@@ -485,6 +495,91 @@ class _QueueWidgetState extends State<QueueWidget> {
       },
     );
   }
+
+  /// The menu a song gets everywhere else, with what only makes sense in the
+  /// queue: bringing a song up next (moved, not added a second time) and
+  /// taking it out of the queue.
+  Future<void> _showSongMenu(
+    BuildContext tileContext,
+    Map song,
+    String queueEntryId,
+  ) async {
+    final l10n = context.l10n!;
+    final colorScheme = Theme.of(context).colorScheme;
+    final index = _queueIndexOfKey(queueEntryId);
+    if (index == -1) return;
+    final currentIndex = audioHandler.currentQueueIndex;
+    final canPlayNext = currentIndex >= 0 && index > currentIndex + 1;
+
+    await showSongOptionsMenu(
+      context: context,
+      song: song,
+      position: menuPositionFor(tileContext),
+      // Adding to the queue a song already in it would only duplicate it.
+      showQueueActions: false,
+      leadingItems: [
+        if (canPlayNext)
+          buildPopupMenuItem<String>(
+            value: 'queue_play_next',
+            icon: FluentIcons.receipt_play_24_regular,
+            label: l10n.playNext,
+            colorScheme: colorScheme,
+          ),
+      ],
+      trailingItems: [
+        buildPopupMenuItem<String>(
+          value: 'queue_remove',
+          icon: FluentIcons.delete_24_regular,
+          label: l10n.removeFromQueue,
+          colorScheme: colorScheme,
+        ),
+      ],
+      onSelected: (value) async {
+        switch (value) {
+          case 'queue_play_next':
+            final current = audioHandler.currentQueueIndex;
+            if (current >= 0) {
+              await audioHandler.reorderQueueById(queueEntryId, current + 1);
+            }
+            return true;
+          case 'queue_remove':
+            await _removeKeepingFocus(queueEntryId);
+            return true;
+          case 'go_to_artist':
+            _goToArtist(song);
+            return true;
+        }
+        return false;
+      },
+    );
+  }
+
+  Future<void> _removeKeepingFocus(String queueEntryId) async {
+    final index = _queueIndexOfKey(queueEntryId);
+    if (index == -1) return;
+    final viewIndex = index - _start;
+    await audioHandler.removeFromQueue(index);
+    // The menu handed focus back to the tile just removed: move it to the
+    // song that took its place.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _focusedViewIndex() == null) _focusViewIndex(viewIndex);
+    });
+  }
+
+  /// The queue may sit in the now playing page, a route above the pages: the
+  /// artist page opens underneath it unless that route goes first.
+  void _goToArtist(Map song) {
+    final artistName = song['artist']?.toString().trim() ?? '';
+    if (artistName.isEmpty) return;
+    closeCurrentBottomSheet();
+    Navigator.of(context, rootNavigator: true).popUntil((r) => r.isFirst);
+    unawaited(
+      NavigationManager.router.push(
+        '${NavigationManager.searchPath}/artist/${Uri.encodeComponent(artistName)}',
+        extra: {'title': artistName, 'ytid': artistName},
+      ),
+    );
+  }
 }
 
 class QueueTile extends StatelessWidget {
@@ -497,8 +592,10 @@ class QueueTile extends StatelessWidget {
     required this.focusNode,
     this.autofocus = false,
     this.canReorder = true,
+    this.showMoreButton = false,
     required this.colorScheme,
     required this.onTap,
+    required this.onShowMenu,
     required this.onDismissed,
     this.confirmDismiss,
   });
@@ -512,8 +609,12 @@ class QueueTile extends StatelessWidget {
   final FocusNode focusNode;
   final bool autofocus;
   final bool canReorder;
+  final bool showMoreButton;
   final ColorScheme colorScheme;
   final VoidCallback onTap;
+
+  /// Opens the song menu over the tile, whose context it is given.
+  final void Function(BuildContext tileContext) onShowMenu;
   final VoidCallback onDismissed;
   final Future<bool?> Function(DismissDirection)? confirmDismiss;
 
@@ -539,17 +640,41 @@ class QueueTile extends StatelessWidget {
             ? colorScheme.primaryContainer.withValues(alpha: 0.45)
             : Colors.transparent,
         borderRadius: BorderRadius.circular(14),
-        child: InkWell(
-          onTap: onTap,
-          focusNode: focusNode,
-          autofocus: autofocus,
-          borderRadius: BorderRadius.circular(14),
-          splashColor: Colors.transparent,
-          highlightColor: colorScheme.onSurface.withValues(alpha: 0.06),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            child: _buildContent(),
-          ),
+        child: Row(
+          children: [
+            Expanded(
+              child: RemoteHoldDetector(
+                focusNode: focusNode,
+                onPress: onTap,
+                onHold: () => onShowMenu(context),
+                child: InkWell(
+                  onTap: onTap,
+                  onLongPress: () => onShowMenu(context),
+                  focusNode: focusNode,
+                  autofocus: autofocus,
+                  borderRadius: BorderRadius.circular(14),
+                  splashColor: Colors.transparent,
+                  highlightColor: colorScheme.onSurface.withValues(alpha: 0.06),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
+                    child: _buildContent(),
+                  ),
+                ),
+              ),
+            ),
+            if (showMoreButton)
+              IconButton(
+                icon: Icon(
+                  FluentIcons.more_vertical_24_regular,
+                  color: colorScheme.onSurfaceVariant,
+                ),
+                tooltip: context.l10n!.moreOptions,
+                onPressed: () => onShowMenu(context),
+              ),
+          ],
         ),
       ),
     );
