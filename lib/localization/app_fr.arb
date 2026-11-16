@@ -212,7 +212,16 @@
   "pureBlackTheme": "Thème sombre",
   "pureBlackThemeDescription": "Utilisez un fond noir pur en mode sombre pour les écrans OLED.",
   "queue": "File d'attente",
+  "radioStarted": "Radio lancée : {count} titres similaires à suivre",
+  "@radioStarted": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "radioStations": "Stations de Radio",
+  "radioUnavailable": "Aucun titre similaire trouvé pour le moment",
   "recentlyPlayed": "Lectures récentes",
   "recentlyPlayedMsg": "Historique de lecture effacé",
   "recommendedForYou": "Recommandations",
@@ -271,6 +280,7 @@
   "spotifyPlaylistMissingSongs": "Titres introuvables",
   "spotifyPlaylistNameHint": "Playlist Spotify importée",
   "spotifyPlaylistProgress": "Recherche {done} sur {total}",
+  "startRadio": "Lancer la radio",
   "suggestedArtists": "Artistes recommandés",
   "suggestedPlaylists": "Playlists recommandées",
   "syncAllNow": "Synchroniser maintenant",

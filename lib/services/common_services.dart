@@ -681,6 +681,72 @@ Future<Map<String, dynamic>?> getSimilarSong(
   return null;
 }
 
+/// How many pages of related videos a radio reads at most. A page holds about
+/// twenty videos, and the length filter can turn most of them away.
+const _radioMaxRelatedPages = 4;
+
+/// The songs of [candidates] a radio can take, in their order: each one once,
+/// none of [seenYtIds], and only the lengths the automatic song picker allows.
+/// The ytids picked are added to [seenYtIds], so that further pages read for
+/// the same radio cannot bring the same song twice.
+List<Map<String, dynamic>> pickRadioSongs(
+  Iterable<Map<String, dynamic>> candidates, {
+  required Set<String> seenYtIds,
+  required int count,
+}) {
+  final picked = <Map<String, dynamic>>[];
+  for (final candidate in candidates) {
+    if (picked.length >= count) break;
+
+    final ytid = songYtid(candidate);
+    if (ytid == null || seenYtIds.contains(ytid)) continue;
+    if (!matchesAutoPickLength(candidate)) continue;
+
+    seenYtIds.add(ytid);
+    picked.add(candidate);
+  }
+  return picked;
+}
+
+/// Up to [count] songs related to [songYtId], for a radio started from it.
+/// Read from the same related videos as [getSimilarSong], page after page, so
+/// the songs/mixes setting of the automatic song picker holds here too.
+/// Empty when nothing could be fetched, offline or on any error.
+Future<List<Map<String, dynamic>>> getRadioSongs(
+  String songYtId, {
+  Set<String> excludedYtIds = const {},
+  int count = 25,
+}) async {
+  final picked = <Map<String, dynamic>>[];
+  final seen = {...excludedYtIds, songYtId};
+
+  try {
+    final song = await ytClient.videos.get(songYtId);
+    var page = await ytClient.videos.getRelatedVideos(song);
+
+    for (var pages = 0; page != null && pages < _radioMaxRelatedPages; pages++) {
+      picked.addAll(
+        pickRadioSongs(
+          page.map((video) => returnSongLayout(0, video)),
+          seenYtIds: seen,
+          count: count - picked.length,
+        ),
+      );
+      if (picked.length >= count) break;
+      page = await page.nextPage();
+    }
+  } catch (e, stackTrace) {
+    logger.log(
+      'Error while fetching radio songs for $songYtId',
+      error: e,
+      stackTrace: stackTrace,
+    );
+  }
+
+  if (picked.isEmpty) logger.log('No radio songs found for $songYtId');
+  return picked;
+}
+
 /// In-memory cache of the audio stream picked for a song at the current
 /// quality setting. The Hive cache only keeps the URL, so without this every
 /// caller that needs the stream itself (bitrate, codec) would fetch the

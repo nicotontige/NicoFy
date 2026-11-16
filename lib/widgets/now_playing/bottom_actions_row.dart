@@ -205,6 +205,15 @@ class _BottomActionsRowState extends State<BottomActionsRow> {
                 onPressed: widget.lyricsController.flipcard,
                 tooltip: l10n.lyrics,
               ),
+            if (!isRadioStation)
+              _buildSimpleActionButton(
+                context: context,
+                icon: FluentIcons.live_24_regular,
+                colorScheme: colorScheme,
+                size: responsiveIconSize,
+                onPressed: () => _startRadio(context),
+                tooltip: l10n.startRadio,
+              ),
             _buildActionButton(
               context: context,
               icon: FluentIcons.heart_24_regular,
@@ -363,6 +372,20 @@ class _BottomActionsRowState extends State<BottomActionsRow> {
       },
     );
   }
+}
+
+/// Replaces what follows the song playing with songs related to it, and says
+/// how that went: the queue changing out of sight is easy to miss.
+Future<void> _startRadio(BuildContext context) async {
+  final queued = await audioHandler.startRadio();
+  if (!context.mounted) return;
+
+  final l10n = context.l10n!;
+  showToast(
+    context,
+    queued > 0 ? l10n.radioStarted(queued) : l10n.radioUnavailable,
+    icon: queued > 0 ? null : FluentIcons.info_20_regular,
+  );
 }
 
 Future<void> _toggleOffline(
