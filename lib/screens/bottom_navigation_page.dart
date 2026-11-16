@@ -28,6 +28,7 @@ import 'package:go_router/go_router.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:nicofy/extensions/l10n.dart';
 import 'package:nicofy/main.dart';
+import 'package:nicofy/services/router_service.dart';
 import 'package:nicofy/services/settings_manager.dart';
 import 'package:nicofy/utilities/flutter_bottom_sheet.dart'
     show closeCurrentBottomSheet, isBottomSheetOpen;
@@ -58,10 +59,30 @@ class _BottomNavigationPageState extends State<BottomNavigationPage> {
   /// Not a branch: the rail entry that opens the queue.
   static const _queueShellIndex = -1;
 
+  /// The queue shows in place of the page, beside the rail, rather than as
+  /// a route over the whole shell, which hid the rail.
+  bool _showingQueue = false;
+
+  /// The rail entry last drawn as selected, for focus to come back to.
+  int _railSelectedIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    NavigationManager.router.routerDelegate.addListener(_onRouteChanged);
+  }
+
   @override
   void dispose() {
+    NavigationManager.router.routerDelegate.removeListener(_onRouteChanged);
     _railFocusNode.dispose();
     super.dispose();
+  }
+
+  /// Navigating anywhere, from the queue's song menu for instance, has to
+  /// show where it went.
+  void _onRouteChanged() {
+    if (_showingQueue && mounted) setState(() => _showingQueue = false);
   }
 
   @override
@@ -101,11 +122,22 @@ class _BottomNavigationPageState extends State<BottomNavigationPage> {
             stream: _miniPlayerVisibilityStream,
             builder: (context, playingSnapshot) {
               final isLargeScreen = MediaQuery.of(context).size.width >= 600;
+              final canShowQueue =
+                  isLargeScreen && (playingSnapshot.data ?? false);
               final items = _getNavigationItems(
                 isOfflineMode,
-                showQueue: isLargeScreen && (playingSnapshot.data ?? false),
+                showQueue: canShowQueue,
               );
-              final selectedIndex = _getCurrentIndex(items, isOfflineMode);
+              // Playback stopped: the queue entry is gone, and the queue
+              // must not come back by itself with the next song.
+              if (!canShowQueue) _showingQueue = false;
+              final isQueueShown = _showingQueue;
+              final selectedIndex = isQueueShown
+                  ? items.indexWhere(
+                      (item) => item.shellIndex == _queueShellIndex,
+                    )
+                  : _getCurrentIndex(items, isOfflineMode);
+              _railSelectedIndex = selectedIndex;
 
               return Scaffold(
                 body: SafeArea(
@@ -153,7 +185,9 @@ class _BottomNavigationPageState extends State<BottomNavigationPage> {
                               // the focused row, which then sat under the bar.
                               return Column(
                                 children: [
-                                  Expanded(child: widget.child),
+                                  Expanded(
+                                    child: _buildPage(showQueue: isQueueShown),
+                                  ),
                                   if (isMiniPlayerVisible)
                                     const Padding(
                                       padding: EdgeInsets.symmetric(
@@ -271,23 +305,64 @@ class _BottomNavigationPageState extends State<BottomNavigationPage> {
     tabs[selectedIndex.clamp(0, tabs.length - 1)].requestFocus();
   }
 
-  /// A full page rather than a bottom sheet: a sheet sits beside the page, so
-  /// a remote can wander out of it and not find its way back.
-  void _showQueue() {
-    closeCurrentBottomSheet();
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => const Scaffold(
-          body: SafeArea(
-            // Keeps the arrow keys on the queue; back leaves the page.
-            child: FocusScope(
-              autofocus: true,
-              child: QueueWidget(focusCurrentSong: true),
+  /// The branch pages, with the queue over them while it is open. The pages
+  /// stay built underneath, so going back finds them as they were, but out of
+  /// reach of the remote and with their animations stopped.
+  Widget _buildPage({required bool showQueue}) {
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: Offstage(
+            offstage: showQueue,
+            child: ExcludeFocus(
+              excluding: showQueue,
+              child: TickerMode(enabled: !showQueue, child: widget.child),
             ),
           ),
         ),
-      ),
+        if (showQueue)
+          Positioned.fill(
+            child: BackButtonListener(
+              onBackButtonPressed: () async {
+                // A menu or a dialog opened from the queue goes first.
+                if (!(ModalRoute.of(context)?.isCurrent ?? true)) {
+                  await Navigator.of(context).maybePop();
+                  return true;
+                }
+                _hideQueue(focusRail: true);
+                return true;
+              },
+              child: const Material(
+                child: Padding(
+                  padding: EdgeInsets.only(top: 8),
+                  child: QueueWidget(focusCurrentSong: true),
+                ),
+              ),
+            ),
+          ),
+      ],
     );
+  }
+
+  /// A page of the shell rather than a bottom sheet, which sits beside the
+  /// page where a remote can wander out of it, or a route, which covered the
+  /// rail: left from the queue reaches the rail like from any page.
+  void _showQueue() {
+    closeCurrentBottomSheet();
+    setState(() => _showingQueue = true);
+  }
+
+  void _hideQueue({bool focusRail = false}) {
+    if (!_showingQueue) return;
+    setState(() => _showingQueue = false);
+    if (!focusRail) return;
+    // The queue had focus and is gone: back lands on the rail, on the page
+    // it returns to.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final tabs = _railFocusNode.traversalDescendants.toList();
+      if (!mounted || tabs.isEmpty) return;
+      tabs[_railSelectedIndex.clamp(0, tabs.length - 1)].requestFocus();
+    });
   }
 
   void _handleOfflineModeChange(bool isOfflineMode) {
@@ -305,10 +380,14 @@ class _BottomNavigationPageState extends State<BottomNavigationPage> {
   void _onTabTapped(int index, List<_NavigationItem> items) {
     if (index < items.length) {
       final item = items[index];
-      final isReselect = _previousShellIndex == item.shellIndex;
+      // Leaving the queue for the page under it is not a reselect: that
+      // page keeps where it was.
+      final isReselect =
+          _previousShellIndex == item.shellIndex && !_showingQueue;
 
       // Close any open bottom sheet before switching tabs
       closeCurrentBottomSheet();
+      _hideQueue();
 
       // If user taps the same tab again, reset it to initial state.
       // Otherwise, preserve the branch state.
