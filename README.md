@@ -1,5 +1,7 @@
 <div align="center">
 
+**English** | [Français](README.fr.md)
+
 # NicoFy
 
 **A music streaming app made in Flutter**
@@ -21,32 +23,49 @@ releases, updates and features.
 
 ## Features
 
-<center>
+### Listening
+- Online search with suggestions, results sorted into category tabs
+- Offline listening, with downloaded songs marked in search results
+- Reliable streaming: songs play from a buffer file, so they don't cut out
+- Queue kept across restarts, resumed at the exact spot
+- The queue lists only the song playing and what comes next; previous still works
+- Radio from the song playing: up to 25 related songs replace what follows
+- Automatic song picker when the queue runs out, with songs, mixes or both
+- Previous restarts the song when pressed mid-song
+- Chapter navigation inside long compilations
+- Synced lyrics
+- Built-in equalizer with presets, sleep timer, SponsorBlock
+- Radio stations
 
-Online song search with suggestions <br/>
-Offline listening support <br/>
-Import & export your data and never lose it <br/>
-Optional local-network sync between your devices <br/>
-Add custom playlists with link <br/>
-Listening Recaps <br/>
-Spotify playlist import <br/>
-Radio stations <br/>
-Optimized sound experience <br/>
-SponsorBlock support <br/>
-Lyrics support <br/>
-No ads <br/>
-No subscriptions <br/>
-Built-in updater <br/>
-Built-in equalizer with presets <br/>
-21 supported languages <br/>
-Material UI & accent colors & dynamic colors (Android 12+) <br/>
-Android Auto and Android TV <br/>
-Queue kept across restarts <br/>
-Chapter navigation inside long compilations <br/>
-Scrobbling to Last.fm and ListenBrainz <br/>
+### Library
+- Custom playlists, also from a YouTube link, and playlist folders
+- Spotify playlist import
+- Act on several songs at once, sort playlists and artists by name
+- Listening recaps
+- Scrobbling to Last.fm and ListenBrainz
+- Import and export your data
 
-</center>
+### Android TV
+- Made for the remote: a now-playing screen that opens on Play/Pause, with the arrows for previous/next and ±10 s
+- After a minute without the remote, the song playing shows up full screen
+- The selected element is clearly outlined
+- Hold OK on a song in the queue for its menu
+- Voice control through the Assistant button
 
+### Android Auto
+- Browse your queue, liked songs, playlists, downloads and recently played
+- Like, shuffle a playlist and start a radio from the car
+
+### Between your devices
+- Control the TV from your phone: see what it plays, pause, skip, seek, edit its queue; while connected, whatever you start on the phone plays on the TV
+- Optional sync of your library over the local network
+- Devices pair once with a PIN
+
+### And also
+- In-app updates: downloaded and installed from the app, with the notes of every version you skipped
+- No ads, no subscription
+- Material You: accent colors and dynamic colors (Android 12+)
+- 21 languages
 
 ---
 
@@ -61,10 +80,10 @@ Scrobbling to Last.fm and ListenBrainz <br/>
 
 | Platform | Status | Dependencies |
 |----------|--------|--------------|
-| Android  | ✅ Supported | — |
+| Android (phone, Android TV, Android Auto) | ✅ Supported | — |
 | Linux    | ✅  Supported (Beta) | libmpv |
 | Windows    | ✅  Supported (Beta) | — |
-| IOS    | ❌ Unsupported | — |
+| iOS    | ❌ Unsupported | — |
 
 ---
 
