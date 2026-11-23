@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_ce_flutter/hive_ce_flutter.dart';
 import 'package:nicofy/services/common_services.dart';
 import 'package:nicofy/services/settings_manager.dart';
+import 'package:nicofy/utilities/formatter.dart';
 
 void main() {
   setUpAll(() async {
@@ -71,6 +72,26 @@ void main() {
       );
 
       expect(ytids(picked), ['a', 'c']);
+    });
+
+    test('never brings another video of a song already heard', () {
+      autoPickLength.value = 'any';
+      final titles = {songTitleKey('Clocks')};
+
+      final picked = pickRadioSongs(
+        [
+          {...video('live'), 'title': 'Clocks (Live in Buenos Aires)'},
+          {...video('fix'), 'title': 'Fix You'},
+          {...video('remaster'), 'title': 'Clocks - Remastered 2008'},
+          {...video('fix-lyrics'), 'title': 'Fix You Lyrics'},
+          {...video('yellow'), 'title': 'Yellow'},
+        ],
+        seenYtIds: {},
+        count: 25,
+        seenTitleKeys: titles,
+      );
+
+      expect(ytids(picked), ['fix', 'yellow']);
     });
 
     test('stops at the length asked for', () {

@@ -2146,6 +2146,9 @@ class NicoFyAudioHandler extends BaseAudioHandler implements AndroidAutoHost {
       addPlaylistToQueueHere(songs, replace: true, startIndex: songIndex);
 
   @override
+  Future<int> startBrowserRadio() => startRadio();
+
+  @override
   Future<void> shuffleBrowserPlaylist(List<Map> songs) =>
       addPlaylistToQueueHere(songs, replace: true, shuffle: true);
 

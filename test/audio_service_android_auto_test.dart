@@ -240,6 +240,39 @@ void main() {
       expect(host.playedSongs?.map((song) => song['ytid']), ['b']);
     });
 
+    test('offline, each song plays once whatever the video', () async {
+      userLikedSongsList.value = [
+        {..._song(ytid: 'a', title: 'Get Lucky'), 'artist': 'Daft Punk'},
+        {..._song(ytid: 'a2', title: 'Get Lucky Live'), 'artist': 'Daft Punk'},
+        {..._song(ytid: 'c', title: 'One More Time'), 'artist': 'Daft Punk'},
+        {
+          ..._song(ytid: 'a3', title: 'Get Lucky (feat. Pharrell Williams)'),
+          'artist': 'Daft Punk',
+        },
+      ];
+
+      await browser.playFromSearch('daft punk');
+
+      expect(host.playedSongs?.map((song) => song['ytid']), ['a', 'c']);
+      expect(host.radiosStarted, 0, reason: 'no radio offline');
+    });
+
+    test('online, the best match plays alone and a radio follows', () async {
+      // Enough matches in the library that the search does not reach
+      // YouTube, which tests cannot.
+      offlineMode.value = false;
+      userLikedSongsList.value = [
+        for (var i = 0; i < 30; i++)
+          {..._song(ytid: 'v$i', title: 'Get Lucky'), 'artist': 'Daft Punk'},
+      ];
+
+      await browser.playFromSearch('get lucky');
+
+      expect(host.playedSongs?.map((song) => song['ytid']), ['v0']);
+      expect(host.playedIndex, 0);
+      expect(host.radiosStarted, 1);
+    });
+
     test('nothing named just resumes what was playing', () async {
       host.queue.add(_song());
 
@@ -349,6 +382,14 @@ class _FakeAndroidAutoHost implements AndroidAutoHost {
   }) async {
     playedSongs = songs;
     playedIndex = songIndex;
+  }
+
+  int radiosStarted = 0;
+
+  @override
+  Future<int> startBrowserRadio() async {
+    radiosStarted++;
+    return 25;
   }
 
   List<Map>? shuffledSongs;

@@ -4,6 +4,7 @@ import 'package:nicofy/localization/app_localizations.dart';
 import 'package:nicofy/services/common_services.dart';
 import 'package:nicofy/services/playlists_manager.dart';
 import 'package:nicofy/services/settings_manager.dart';
+import 'package:nicofy/utilities/formatter.dart';
 import 'package:nicofy/utilities/map_utils.dart';
 import 'package:nicofy/utilities/mediaitem.dart';
 import 'package:rxdart/rxdart.dart';
@@ -33,6 +34,10 @@ abstract interface class AndroidAutoHost {
   Future<void> resumeAudio();
   Future<void> skipToQueueItem(int index);
   Future<void> playBrowserPlaylist(List<Map> songs, {required int songIndex});
+
+  /// Replaces what follows the song playing with songs related to it, the
+  /// radio button's way. How many songs were queued, 0 when none could be.
+  Future<int> startBrowserRadio();
 
   /// Plays [songs] in a random order, the way the phone's shuffle button does.
   Future<void> shuffleBrowserPlaylist(List<Map> songs);
@@ -578,7 +583,25 @@ class AndroidAutoBrowser {
       }
 
       _lastSearchResults = results;
-      await _host.playBrowserPlaylist(results, songIndex: 0);
+
+      // The search brings every video of the song asked for — the clip, the
+      // live, the lyrics, the covers — and queuing them all plays the same
+      // song over and over. The best match plays alone, and a radio started
+      // from it follows, the way the radio button does it.
+      if (!offlineMode.value) {
+        await _host.playBrowserPlaylist([results.first], songIndex: 0);
+        await _host.startBrowserRadio();
+        return;
+      }
+
+      // Offline there is no radio: the library's other matches follow, each
+      // song once.
+      final titles = <String>{};
+      final songs = [
+        for (final song in results)
+          if (titles.add(songTitleKey(song['title']?.toString() ?? ''))) song,
+      ];
+      await _host.playBrowserPlaylist(songs, songIndex: 0);
     } catch (error, stackTrace) {
       _host.logBrowserError(
         'Error in media browser playFromSearch',

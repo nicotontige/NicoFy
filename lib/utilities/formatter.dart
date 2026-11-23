@@ -64,6 +64,36 @@ String formatSongTitle(String title) {
   return t.replaceAll(RegExp(r'\s{2,}'), ' ').trim();
 }
 
+// Words that tell one recording of a song from another, not one song from
+// another: "Clocks Live", "Clocks Remastered 2008" and "Clocks" are one song.
+final _versionWordsPattern = RegExp(
+  r'\b(?:live|remaster|remastered|version|acoustic|acoustique|unplugged|'
+  'cover|remix|edit|radio|extended|clip|officiel|officielle|audio|video|'
+  r'vidéo|hd|4k|paroles|lyrics?|explicit|mv|\d{4})\b',
+);
+
+/// What two recordings of the same song have in common in their titles, so a
+/// radio or a voice request can tell "Clocks", "Clocks (Live in Buenos
+/// Aires)" and "Clocks - Remastered 2008" apart from another song. Featured
+/// artists and anything after a further " - " or " | " are left out.
+String songTitleKey(String title) {
+  var t = title.toLowerCase();
+  for (final cut in [' - ', ' | ', ' – ', ' — ']) {
+    final at = t.indexOf(cut);
+    if (at > 0) t = t.substring(0, at);
+  }
+  t = t.replaceAll(RegExp(r'[\(\[].*?[\)\]]'), ' ');
+  final feat = RegExp(r'\s(?:feat\.?|ft\.?|featuring)\s').firstMatch(t);
+  if (feat != null) t = t.substring(0, feat.start);
+  t = t
+      .replaceAll(_versionWordsPattern, ' ')
+      .replaceAll(RegExp(r'[^\p{L}\p{N}]+', unicode: true), ' ')
+      .trim();
+  // A title made only of such words ("Intro (Live)") keeps them, rather than
+  // matching every other title made only of them.
+  return t.isEmpty ? title.toLowerCase().trim() : t;
+}
+
 Map<String, dynamic> returnSongLayout(
   int index,
   Video song, {

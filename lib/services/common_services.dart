@@ -689,10 +689,16 @@ const _radioMaxRelatedPages = 4;
 /// none of [seenYtIds], and only the lengths the automatic song picker allows.
 /// The ytids picked are added to [seenYtIds], so that further pages read for
 /// the same radio cannot bring the same song twice.
+///
+/// With [seenTitleKeys], a song is also taken only once whatever the video:
+/// the live, the lyrics video and the covers of a song already in
+/// [seenTitleKeys] (see [songTitleKey]) are left out, and the titles picked
+/// are added to it.
 List<Map<String, dynamic>> pickRadioSongs(
   Iterable<Map<String, dynamic>> candidates, {
   required Set<String> seenYtIds,
   required int count,
+  Set<String>? seenTitleKeys,
 }) {
   final picked = <Map<String, dynamic>>[];
   for (final candidate in candidates) {
@@ -701,6 +707,13 @@ List<Map<String, dynamic>> pickRadioSongs(
     final ytid = songYtid(candidate);
     if (ytid == null || seenYtIds.contains(ytid)) continue;
     if (!matchesAutoPickLength(candidate)) continue;
+
+    final title = candidate['title']?.toString();
+    final titleKey = title == null ? null : songTitleKey(title);
+    if (seenTitleKeys != null && titleKey != null) {
+      if (seenTitleKeys.contains(titleKey)) continue;
+      seenTitleKeys.add(titleKey);
+    }
 
     seenYtIds.add(ytid);
     picked.add(candidate);
@@ -722,6 +735,11 @@ Future<List<Map<String, dynamic>>> getRadioSongs(
 
   try {
     final song = await ytClient.videos.get(songYtId);
+    // The song the radio starts from has been heard: none of its other
+    // recordings either.
+    final seenTitles = {
+      songTitleKey(returnSongLayout(0, song)['title'] as String),
+    };
     var page = await ytClient.videos.getRelatedVideos(song);
 
     for (var pages = 0; page != null && pages < _radioMaxRelatedPages; pages++) {
@@ -730,6 +748,7 @@ Future<List<Map<String, dynamic>>> getRadioSongs(
           page.map((video) => returnSongLayout(0, video)),
           seenYtIds: seen,
           count: count - picked.length,
+          seenTitleKeys: seenTitles,
         ),
       );
       if (picked.length >= count) break;
