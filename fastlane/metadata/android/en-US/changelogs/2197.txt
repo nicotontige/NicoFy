@@ -1,0 +1,4 @@
+Fixed
+- "Ok Google, play <song> on NicoFy" no longer fills the queue with the same song over and over (clip, live, lyrics, covers): the song asked for plays once, then a radio started from it follows. Offline, the other matching songs of the library follow, each one once.
+- A radio never brings back a song it already holds, nor the song it started from, in another version (live, remastered, lyrics video, featuring...).
+- The dynamic accent color follows the wallpaper more reliably, and can be turned on on desktop too.
